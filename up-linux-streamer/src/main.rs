@@ -3,11 +3,11 @@ use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use up_client_zenoh::UPClientZenoh;
 use up_rust::UStatus;
 use up_rust::UTransport;
 use up_streamer::{Endpoint, UStreamer};
 use up_transport_vsomeip::UPTransportVsomeip;
+use up_transport_zenoh::UPClientZenoh;
 use zenoh::config::Config;
 
 #[tokio::main]

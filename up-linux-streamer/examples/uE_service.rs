@@ -1,16 +1,22 @@
 use async_trait::async_trait;
-use log::trace;
-use std::fs::canonicalize;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use up_rust::{UListener, UMessage, UMessageBuilder, UStatus, UTransport, UUri};
-use up_transport_vsomeip::UPTransportVsomeip;
+use std::time::Duration;
+use up_rust::{UListener, UMessage, UMessageBuilder, UPayloadFormat, UStatus, UTransport, UUri};
+use up_transport_zenoh::UPClientZenoh;
+use zenoh::config::Config;
 
-const SERVICE_AUTHORITY: &str = "me_authority";
-const SERVICE_UE_ID: u16 = 0x4321;
+const SERVICE_AUTHORITY: &str = "linux";
+const SERVICE_UE_ID: u16 = 0x1236;
 const SERVICE_UE_VERSION_MAJOR: u8 = 1;
-const SERVICE_RESOURCE_ID: u16 = 0x0421;
+const SERVICE_RESOURCE_ID: u16 = 0x0896;
+
+const CLIENT_AUTHORITY: &str = "me_authority";
+const CLIENT_UE_ID: u16 = 0x5678;
+const CLIENT_UE_VERSION_MAJOR: u8 = 1;
+const CLIENT_RESOURCE_ID: u16 = 0;
+
+const REQUEST_TTL: u32 = 1000;
 
 struct ServiceRequestResponder {
     client: Arc<dyn UTransport>,
@@ -40,23 +46,15 @@ impl UListener for ServiceRequestResponder {
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
-    println!("mE_service");
+    println!("uE_client");
 
-    let crate_dir = env!("CARGO_MANIFEST_DIR");
-    // TODO: Make configurable to pass the path to the vsomeip config as a command line argument
-    let vsomeip_config = PathBuf::from(crate_dir).join("vsomeip-configs/mE_service.json");
-    let vsomeip_config = canonicalize(vsomeip_config).ok();
-    trace!("vsomeip_config: {vsomeip_config:?}");
-
-    // There will be a single vsomeip_transport, as there is a connection into device and a streamer
-    // TODO: Add error handling if we fail to create a UPTransportVsomeip
+    // TODO: Probably make somewhat configurable?
+    let zenoh_config = Config::default();
+    // TODO: Add error handling if we fail to create a UPClientZenoh
     let service: Arc<dyn UTransport> = Arc::new(
-        UPTransportVsomeip::new_with_config(
-            &SERVICE_AUTHORITY.to_string(),
-            SERVICE_UE_ID,
-            &vsomeip_config.unwrap(),
-        )
-        .unwrap(),
+        UPClientZenoh::new(zenoh_config, "linux".to_string())
+            .await
+            .unwrap(),
     );
 
     let source_filter = UUri {
@@ -73,9 +71,9 @@ async fn main() -> Result<(), UStatus> {
         resource_id: SERVICE_RESOURCE_ID as u32,
         ..Default::default()
     };
+
     let service_request_responder: Arc<dyn UListener> =
         Arc::new(ServiceRequestResponder::new(service.clone()));
-    // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
     service
         .register_listener(
             &source_filter,

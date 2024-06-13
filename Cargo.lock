@@ -4327,28 +4327,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "up-client-zenoh"
-version = "0.1.0"
-source = "git+https://github.com/ZettaScaleLabs/up-client-zenoh-rust?branch=bump_1.5.8#ea3a993497967418c31060ddeed91ea9fb632f5a"
-dependencies = [
- "anyhow",
- "async-trait",
- "bitmask-enum",
- "chrono",
- "crossbeam-channel",
- "env_logger 0.10.2",
- "lazy_static",
- "log",
- "prost",
- "prost-types",
- "protobuf",
- "rand 0.8.5",
- "tokio",
- "up-rust",
- "zenoh",
-]
-
-[[package]]
 name = "up-linux-streamer"
 version = "0.1.5-dev"
 dependencies = [
@@ -4356,10 +4334,10 @@ dependencies = [
  "env_logger 0.10.2",
  "log",
  "tokio",
- "up-client-zenoh",
  "up-rust",
  "up-streamer",
  "up-transport-vsomeip",
+ "up-transport-zenoh",
  "zenoh",
 ]
 
@@ -4424,6 +4402,28 @@ dependencies = [
  "uuid",
  "vsomeip-proc-macro",
  "vsomeip-sys",
+]
+
+[[package]]
+name = "up-transport-zenoh"
+version = "0.1.0"
+source = "git+https://github.com/ZettaScaleLabs/up-client-zenoh-rust?branch=bump_1.5.8#e23e6c299797b5784afaeb20ff0d4338fbfbde02"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bitmask-enum",
+ "chrono",
+ "crossbeam-channel",
+ "env_logger 0.10.2",
+ "lazy_static",
+ "log",
+ "prost",
+ "prost-types",
+ "protobuf",
+ "rand 0.8.5",
+ "tokio",
+ "up-rust",
+ "zenoh",
 ]
 
 [[package]]
