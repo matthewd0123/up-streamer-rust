@@ -4,7 +4,7 @@ use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use up_rust::{UListener, UMessage, UStatus, UTransport, UUri};
+use up_rust::{UListener, UMessage, UMessageBuilder, UStatus, UTransport, UUri};
 use up_transport_vsomeip::UPTransportVsomeip;
 
 const ME_AUTHORITY: &str = "me_authority";
@@ -23,11 +23,16 @@ impl ServiceRequestResponder {
 #[async_trait]
 impl UListener for ServiceRequestResponder {
     async fn on_receive(&self, msg: UMessage) {
-        println!("Received a message: {msg:?}");
+        println!("ServiceRequestResponder: Received a message: {msg:?}");
+
+        let response_msg = UMessageBuilder::response_for_request(msg.attributes.as_ref().unwrap())
+            .build()
+            .unwrap();
+        self.client.send(response_msg).await.unwrap();
     }
 
     async fn on_error(&self, err: UStatus) {
-        println!("Encountered an error: {err:?}");
+        println!("ServiceRequestResponder: Encountered an error: {err:?}");
     }
 }
 

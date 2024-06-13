@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
 use up_client_zenoh::UPClientZenoh;
-use up_rust::{UListener, UMessage, UMessageBuilder, UStatus, UTransport, UUri};
+use up_rust::{UListener, UMessage, UMessageBuilder, UPayloadFormat, UStatus, UTransport, UUri};
 use zenoh::config::Config;
 
 const SERVICE_AUTHORITY: &str = "me_authority";
@@ -22,11 +22,11 @@ struct ServiceResponseListener;
 #[async_trait]
 impl UListener for ServiceResponseListener {
     async fn on_receive(&self, msg: UMessage) {
-        println!("Received a message: {msg:?}");
+        println!("ServiceResponseListener: Received a message: {msg:?}");
     }
 
     async fn on_error(&self, err: UStatus) {
-        println!("Encountered an error: {err:?}");
+        println!("ServiceResponseListener: Encountered an error: {err:?}");
     }
 }
 
