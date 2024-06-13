@@ -11,7 +11,7 @@
 
 [workspace]
 resolver = "2"
-members = [
+members = [ "up-linux-streamer",
     "up-streamer",
 ]
 
@@ -34,7 +34,7 @@ prost = { version = "0.12" }
 prost-types = { version = "0.12" }
 serde_json = { version = "1.0.111" }
 uuid = { version = "1.7.0" }
-up-rust = { default-features = false, git = "https://github.com/eclipse-uprotocol/up-rust", rev = "f5248a89cf1db6232f463ee3ce7b1cb20d79cfdb" }
+up-rust = { default-features = false, git = "https://github.com/eclipse-uprotocol/up-rust", rev = "d736fdf35ff4728effa7f36b720f0fc1605d5ba0" }
 
 
 [profile.dev]
