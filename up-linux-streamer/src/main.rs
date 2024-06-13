@@ -23,6 +23,7 @@ async fn main() -> Result<(), UStatus> {
     trace!("vsomeip_config: {vsomeip_config:?}");
 
     // There will be a single vsomeip_transport, as there is a connection into device and a streamer
+    // TODO: Add error handling if we fail to create a UPTransportVsomeip
     let vsomeip_transport: Arc<dyn UTransport> = Arc::new(
         UPTransportVsomeip::new_with_config(&"linux".to_string(), 10, &vsomeip_config.unwrap())
             .unwrap(),
@@ -30,6 +31,7 @@ async fn main() -> Result<(), UStatus> {
 
     // TODO: Probably make somewhat configurable?
     let zenoh_config = Config::default();
+    // TODO: Add error handling if we fail to create a UPClientZenoh
     let zenoh_transport: Arc<dyn UTransport> = Arc::new(
         UPClientZenoh::new(zenoh_config, "linux".to_string())
             .await
@@ -46,7 +48,7 @@ async fn main() -> Result<(), UStatus> {
     //  relevant authorities over Zenoh that should be forwarded
     let zenoh_transport_endpoint_a = Endpoint::new(
         "zenoh_transport_endpoint_a",
-        "other_linux",
+        "linux", // simple initial case of streamer + intended high compute destination on same device
         zenoh_transport.clone(),
     );
 

@@ -4352,6 +4352,7 @@ dependencies = [
 name = "up-linux-streamer"
 version = "0.1.5-dev"
 dependencies = [
+ "async-trait",
  "env_logger 0.10.2",
  "log",
  "tokio",
