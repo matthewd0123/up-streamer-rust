@@ -12,7 +12,7 @@
 [workspace]
 resolver = "2"
 members = [ "up-linux-streamer",
-    "up-streamer",
+    "up-streamer", "up-usubscription"
 ]
 
 [workspace.package]

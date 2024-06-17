@@ -20,8 +20,10 @@ use log::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use std::str;
 use std::thread;
-use up_rust::{UCode, UListener, UMessage, UStatus, UTransport, UUIDBuilder, UUri};
+use up_rust::{UAttributes, UCode, UListener, UMessage, UMessageType, UStatus, UTransport, UUIDBuilder, UUri};
+use up_usubscription::{FetchSubscribersRequestFoo, SubscriberInfoFoo, SubscriptionRequestFoo, USubscription};
 
 const USTREAMER_TAG: &str = "UStreamer:";
 const USTREAMER_FN_NEW_TAG: &str = "new():";
@@ -74,7 +76,7 @@ impl TransportForwarders {
         }
     }
 
-    pub async fn insert(&mut self, out_transport: Arc<dyn UTransport>) -> Sender<Arc<UMessage>> {
+    pub async fn insert(&mut self, in_transport: Arc<dyn UTransport>, out_transport: Arc<dyn UTransport>, out_authority_name: String) -> Sender<Arc<UMessage>> {
         let out_comparable_transport = ComparableTransport::new(out_transport.clone());
 
         let mut transport_forwarders = self.forwarders.lock().await;
@@ -86,7 +88,7 @@ impl TransportForwarders {
                     "{TRANSPORT_FORWARDERS_TAG}:{TRANSPORT_FORWARDERS_FN_INSERT_TAG} Inserting..."
                 );
                 let (tx, rx) = channel::bounded(self.message_queue_size);
-                (0, Arc::new(TransportForwarder::new(out_transport, rx)), tx)
+                (0, Arc::new(TransportForwarder::new(in_transport, out_transport, out_authority_name, rx, Arc::new(USubscription::new()))), tx)
             });
         *active += 1;
         sender.clone()
@@ -409,7 +411,7 @@ pub struct UStreamer {
     name: String,
     registered_forwarding_rules: ForwardingRules,
     transport_forwarders: TransportForwarders,
-    forwarding_listeners: ForwardingListeners,
+    forwarding_listeners: ForwardingListeners
 }
 
 impl UStreamer {
@@ -435,7 +437,7 @@ impl UStreamer {
             name: name.to_string(),
             registered_forwarding_rules: Mutex::new(HashSet::new()),
             transport_forwarders: TransportForwarders::new(message_queue_size as usize),
-            forwarding_listeners: ForwardingListeners::new(),
+            forwarding_listeners: ForwardingListeners::new()
         }
     }
 
@@ -516,7 +518,7 @@ impl UStreamer {
                 true => {
                     let out_sender = self
                         .transport_forwarders
-                        .insert(out.transport.clone())
+                        .insert(r#in.transport.clone(), out.transport.clone(), out.authority.clone())
                         .await;
                     self.forwarding_listeners
                         .insert(
@@ -636,14 +638,19 @@ const TRANSPORT_FORWARDER_FN_MESSAGE_FORWARDING_LOOP_TAG: &str = "message_forwar
 pub(crate) struct TransportForwarder {}
 
 impl TransportForwarder {
-    fn new(out_transport: Arc<dyn UTransport>, message_receiver: Receiver<Arc<UMessage>>) -> Self {
+    fn new(in_transport: Arc<dyn UTransport>, out_transport: Arc<dyn UTransport>, out_authority_name: String, message_receiver: Receiver<Arc<UMessage>>, usubscription: Arc<USubscription>) -> Self {
+        let usubscription_clone = usubscription.clone();
+        let in_transport_clone = in_transport.clone();
         let out_transport_clone = out_transport.clone();
         let message_receiver_clone = message_receiver.clone();
         thread::spawn(|| {
             task::block_on(Self::message_forwarding_loop(
                 UUIDBuilder::build().to_hyphenated_string(),
+                in_transport_clone,
                 out_transport_clone,
+                out_authority_name,
                 message_receiver_clone,
+                usubscription_clone
             ))
         });
 
@@ -652,8 +659,11 @@ impl TransportForwarder {
 
     async fn message_forwarding_loop(
         id: String,
+        in_transport: Arc<dyn UTransport>,
         out_transport: Arc<dyn UTransport>,
+        out_authority_name: String,
         message_receiver: Receiver<Arc<UMessage>>,
+        usubscription: Arc<USubscription>
     ) {
         while let Ok(msg) = message_receiver.recv().await {
             debug!(
@@ -663,8 +673,70 @@ impl TransportForwarder {
                 TRANSPORT_FORWARDER_FN_MESSAGE_FORWARDING_LOOP_TAG,
                 msg
             );
+            let msg_type = &msg.attributes.type_.enum_value_or_default();
+            // let send_res = out_transport.send(msg.deref().clone()).await;
 
-            let send_res = out_transport.send(msg.deref().clone()).await;
+            let send_res = match msg_type {
+                UMessageType::UMESSAGE_TYPE_NOTIFICATION
+                | UMessageType::UMESSAGE_TYPE_RESPONSE => {
+                    out_transport.send(msg.deref().clone()).await
+                },
+                UMessageType::UMESSAGE_TYPE_REQUEST => {
+                    let sink = &msg.attributes.sink;
+                    // 1: Subscribe
+                    // 2: Unsubscribe
+                    match sink.resource_id {
+                        1 => {
+                            let payload = msg.payload.as_ref().unwrap();
+                            let subscriber_info = SubscriberInfoFoo{
+                                uri: msg.attributes.source.clone().unwrap()
+                            };
+                            let request = SubscriptionRequestFoo{
+                                topic: UUri::try_from(str::from_utf8(payload).unwrap()).unwrap(),
+                                subscriber: subscriber_info
+                            };
+                            let subscription_response = usubscription.subscribe(request).await;
+                            let response_payload = subscription_response.unwrap();
+                            let umsg_subscription_response = UMessage {
+                                attributes: Some(UAttributes {
+                                    source: msg.attributes.sink.clone(),
+                                    sink: msg.attributes.source.clone(),
+                                    type_: UMessageType::UMESSAGE_TYPE_RESPONSE.into(),
+                                    ..Default::default()
+                                })
+                                .into(),
+                                payload: Some(response_payload.status.message.as_bytes().to_vec().into()),
+                                ..Default::default()
+                            };
+                            in_transport.send(umsg_subscription_response).await
+                        },
+                        // 2 => {
+                        //     todo!()
+                        // },
+                        0_u32 | 2_u32..=u32::MAX => out_transport.send(msg.deref().clone()).await
+                    }
+                },
+                UMessageType::UMESSAGE_TYPE_PUBLISH => {
+                    let topic = &msg.attributes.source;
+                    let fetch_subscribers_request = FetchSubscribersRequestFoo {
+                        topic: topic.clone().unwrap()
+                    };
+                    let subscribers = usubscription.fetch_subscribers(fetch_subscribers_request).await.unwrap();
+                    let mut authority_name_hash_set = HashSet::new();
+                    for subscriber in subscribers.subscribers {
+                        authority_name_hash_set.insert(subscriber.authority_name);
+                    }
+                    if authority_name_hash_set.contains(&out_authority_name) {
+                        out_transport.send(msg.deref().clone()).await
+                    } else {
+                        Ok(())
+                    }
+                },
+                _ => {
+                    dbg!("HI");
+                    todo!()
+                }
+            };
             if let Err(err) = send_res {
                 warn!(
                     "{}:{}:{} Sending on out_transport failed: {:?}",
