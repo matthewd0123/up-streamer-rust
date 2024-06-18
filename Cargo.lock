@@ -4442,6 +4442,7 @@ dependencies = [
  "serde_json",
  "subscription-cache",
  "up-rust",
+ "up-usubscription",
  "uuid",
 ]
 
@@ -4490,6 +4491,22 @@ dependencies = [
  "tokio",
  "up-rust",
  "zenoh",
+]
+
+[[package]]
+name = "up-usubscription"
+version = "0.1.5-dev"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "env_logger 0.10.2",
+ "futures",
+ "log",
+ "prost",
+ "protobuf",
+ "serde_json",
+ "up-rust",
+ "uuid",
 ]
 
 [[package]]

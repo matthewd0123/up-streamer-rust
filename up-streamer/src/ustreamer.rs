@@ -21,6 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str;
+use std::str;
 use std::thread;
 use up_rust::{UAttributes, UCode, UListener, UMessage, UMessageType, UStatus, UTransport, UUIDBuilder, UUri};
 use subscription_cache::{FetchSubscribersRequestFoo, FetchSubscribersResponseFoo, SubscriberInfoFoo, SubscriptionCache, SubscriptionRequestFoo};
@@ -662,7 +663,9 @@ impl TransportForwarder {
         thread::spawn(|| {
             task::block_on(Self::message_forwarding_loop(
                 UUIDBuilder::build().to_hyphenated_string(),
+                in_transport_clone,
                 out_transport_clone,
+                out_authority_name,
                 out_authority_name,
                 message_receiver_clone,
                 request_sender_clone,
@@ -675,7 +678,9 @@ impl TransportForwarder {
 
     async fn message_forwarding_loop(
         id: String,
+        in_transport: Arc<dyn UTransport>,
         out_transport: Arc<dyn UTransport>,
+        out_authority_name: String,
         out_authority_name: String,
         message_receiver: Receiver<Arc<UMessage>>,
         request_sender: Sender<FetchSubscribersRequestFoo>,
