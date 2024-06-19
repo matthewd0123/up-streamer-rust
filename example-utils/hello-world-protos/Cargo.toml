@@ -17,13 +17,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-prost = { workspace = true }
-prost-types = { workspace = true }
+bytes = { version = "1.5" }
 protobuf = { version = "3.3", features = ["with-bytes"] }
 
 [build-dependencies]
-prost-build = { version = "0.12" }
-ureq = "2.7"
 protobuf-codegen = { version = "3.3" }
 protoc-bin-vendored = { version = "3.0" }
 reqwest = { version = "0.12", features = ["blocking"] }

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use hello_world_protos::hello_world_service::HelloRequest;
 use log::trace;
 use std::fs::canonicalize;
 use std::path::PathBuf;
@@ -36,6 +37,12 @@ impl UListener for ServiceResponseListener {
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
+
+    // TODO: Flesh out and incorporate the HelloRequest and HelloResponse protobuf objects into examples
+    let hello_request = HelloRequest {
+        name: "hello".to_string(),
+        ..Default::default()
+    };
 
     println!("mE_client");
 

@@ -11,16 +11,17 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-use prost_build::Config;
+// use prost_build::Config;
+use protobuf_codegen::Customize;
 use std::env;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 fn main() -> std::io::Result<()> {
     // use vendored protoc instead of relying on user provided protobuf installation
     env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
 
+    // if let Err(err) = get_and_build_protos(
     if let Err(err) = get_and_build_protos(
         &[
             "https://raw.githubusercontent.com/protocolbuffers/protobuf/main/src/google/protobuf/descriptor.proto",
@@ -28,7 +29,8 @@ fn main() -> std::io::Result<()> {
             "https://raw.githubusercontent.com/eclipse-uprotocol/up-spec/main/up-core-api/uprotocol/uoptions.proto",
             "https://raw.githubusercontent.com/COVESA/uservices/main/src/main/proto/example/hello_world/v1/hello_world_topics.proto",
             "https://raw.githubusercontent.com/PLeVasseur/uservices/feature/update-uprotocol-options-path/src/main/proto/example/hello_world/v1/hello_world_service.proto",
-        ]
+        ],
+    "helloworld",
     ) {
         let error_message = format!("Failed to fetch and build protobuf file: {err:?}");
         return Err(std::io::Error::new(std::io::ErrorKind::Other, error_message));
@@ -37,14 +39,18 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-// Fetch protobuf definitions from `url`, and build them with prost_build
-fn get_and_build_protos(urls: &[&str]) -> core::result::Result<(), Box<dyn std::error::Error>> {
+// Fetch protobuf definitions from `url`, and build them
+fn get_and_build_protos(
+    urls: &[&str],
+    output_folder: &str,
+) -> core::result::Result<(), Box<dyn std::error::Error>> {
     let out_dir = env::var_os("OUT_DIR").unwrap();
+    let proto_folder = Path::new(&out_dir).join("proto");
     let mut proto_files = Vec::new();
 
     for url in urls {
         let file_name = url.split('/').last().unwrap();
-        let mut file_path_buf = PathBuf::from(&out_dir);
+        let mut file_path_buf = PathBuf::from(&proto_folder);
 
         // Check if the URL is from googleapis to determine the correct path
         if url.contains("googleapis/googleapis") {
@@ -74,42 +80,34 @@ fn get_and_build_protos(urls: &[&str]) -> core::result::Result<(), Box<dyn std::
         proto_files.push(file_path_buf);
     }
 
-    // Compile all .proto files together
-    let mut config = Config::new();
-    config.disable_comments(["."]);
-
-    // Use references to PathBuf directly
-    config.compile_protos(&proto_files, &[&PathBuf::from(out_dir)])?;
+    protobuf_codegen::Codegen::new()
+        .protoc()
+        // use vendored protoc instead of relying on user provided protobuf installation
+        .protoc_path(&protoc_bin_vendored::protoc_bin_path().unwrap())
+        .customize(Customize::default().tokio_bytes(true))
+        .include(proto_folder)
+        .inputs(proto_files)
+        .cargo_out_dir(output_folder)
+        .run_from_script();
 
     Ok(())
 }
 
 fn download_and_write_file(
     url: &str,
-    destination: &Path,
+    dest_path: &PathBuf,
 ) -> core::result::Result<(), Box<dyn std::error::Error>> {
     // Send a GET request to the URL
-    let resp = ureq::get(url).call();
-
-    match resp {
-        Err(error) => Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            error.to_string(),
-        ))),
-        Ok(response) => {
-            // Ensure parent directories exist
-            if let Some(parent) = destination.parent() {
-                fs::create_dir_all(parent)?;
+    reqwest::blocking::get(url)
+        .map_err(Box::from)
+        .and_then(|mut response| {
+            if let Some(parent_path) = dest_path.parent() {
+                std::fs::create_dir_all(parent_path)?;
             }
-
-            // Open a file in write-only mode
-            let mut out_file = fs::File::create(destination)?;
-
-            // Write the response body directly to the file
-            let content = response.into_string()?;
-            out_file.write_all(content.as_bytes())?;
-
-            Ok(())
-        }
-    }
+            let mut out_file = fs::File::create(dest_path)?;
+            response
+                .copy_to(&mut out_file)
+                .map(|_| ())
+                .map_err(|e| e.to_string().into())
+        })
 }
