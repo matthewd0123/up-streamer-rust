@@ -14,6 +14,7 @@ use zenoh::config::Config;
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
+    std::env::set_var("RUST_LOG", "trace");
     env_logger::init();
 
     let usubscription = Arc::new(USubscriptionStaticFile::new());

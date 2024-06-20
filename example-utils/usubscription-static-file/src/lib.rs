@@ -13,7 +13,8 @@
 
 use serde_json;
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::fs::{self, canonicalize};
+use std::path::PathBuf;
 use std::str::FromStr;
 use up_rust::UUri;
 
@@ -34,8 +35,12 @@ impl USubscriptionStaticFile {
         // This is a static file, so we will just return the same set of subscribers
         // for all URIs
         println!("fetch_subscribers for topic: {}", topic);
-        let subscription_json_file = "./testdata.json";
-        let data = fs::read_to_string(subscription_json_file).expect("Unable to read file");
+        let crate_dir = env!("CARGO_MANIFEST_DIR");
+        let subscription_json_file = PathBuf::from(crate_dir).join("static-configs/testdata.json");
+        let subscription_json_file = canonicalize(subscription_json_file).ok();
+        println!("subscription_json_file: {subscription_json_file:?}");
+        // let subscription_json_file = "./testdata.json";
+        let data = fs::read_to_string(subscription_json_file.unwrap()).expect("Unable to read file");
         let res: serde_json::Value = serde_json::from_str(&data).expect("Unable to parse");
 
         let mut subscribers_map = HashMap::new();
