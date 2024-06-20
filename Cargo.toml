@@ -11,7 +11,9 @@
 
 [workspace]
 resolver = "2"
-members = [ "up-linux-streamer",
+members = [
+    "example-utils/hello-world-protos",
+    "up-linux-streamer",
     "up-streamer", "subscription-cache"
 ]
 

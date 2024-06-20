@@ -1,5 +1,7 @@
 use async_trait::async_trait;
+use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
 use log::trace;
+use protobuf::Message;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,6 +28,16 @@ struct ServiceResponseListener;
 impl UListener for ServiceResponseListener {
     async fn on_receive(&self, msg: UMessage) {
         println!("ServiceResponseListener: Received a message: {msg:?}");
+
+        let Some(payload_bytes) = msg.payload else {
+            panic!("No payload bytes");
+        };
+
+        let Ok(hello_response) = HelloResponse::parse_from_bytes(&payload_bytes) else {
+            panic!("Unable to parse into HelloResponse");
+        };
+
+        println!("Here we received response: {hello_response:?}");
     }
 
     async fn on_error(&self, err: UStatus) {
@@ -76,11 +88,18 @@ async fn main() -> Result<(), UStatus> {
         .register_listener(&sink, Some(&source), service_response_listener)
         .await?;
 
+    let mut i = 0;
     loop {
         tokio::time::sleep(Duration::from_millis(1000)).await;
 
+        let hello_request = HelloRequest {
+            name: format!("me_client@i={}", i).to_string(),
+            ..Default::default()
+        };
+        i += 1;
+
         let request_msg = UMessageBuilder::request(sink.clone(), source.clone(), REQUEST_TTL)
-            .build()
+            .build_with_protobuf_payload(&hello_request)
             .unwrap();
         println!("Sending Request message:\n{request_msg:?}");
 
