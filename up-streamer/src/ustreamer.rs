@@ -416,9 +416,6 @@ pub struct UStreamer {
     registered_forwarding_rules: ForwardingRules,
     transport_forwarders: TransportForwarders,
     forwarding_listeners: ForwardingListeners,
-    subscription_cache: Arc<Mutex<SubscriptionCache>>,
-    req_rcv: Receiver<FetchSubscribersRequestFoo>,
-    res_send: Sender<FetchSubscribersResponseFoo>,
 }
 
 impl UStreamer {
@@ -443,17 +440,28 @@ impl UStreamer {
         let (req_send, req_rcv) = channel::unbounded::<FetchSubscribersRequestFoo>();
         let (res_send, res_rcv) = channel::unbounded::<FetchSubscribersResponseFoo>();
 
-
-
-        Self {
+        let instance = Self {
             name: name.to_string(),
             registered_forwarding_rules: Mutex::new(HashSet::new()),
             transport_forwarders: TransportForwarders::new(message_queue_size as usize, req_send, res_rcv),
             forwarding_listeners: ForwardingListeners::new(),
-            subscription_cache: Arc::new(Mutex::new(SubscriptionCache::new())),
-            req_rcv,
-            res_send,
+        };
+
+        thread::spawn(move || {
+            task::block_on(Self::receive_cache_requests(req_rcv.clone(), res_send.clone()))
+        });
+
+        instance
+    }
+
+
+    async fn receive_cache_requests(request_receiver: Receiver<FetchSubscribersRequestFoo>, response_sender: Sender<FetchSubscribersResponseFoo>) {
+        let subscription_cache = SubscriptionCache::new();
+        while let Ok(request) = request_receiver.recv().await {
+            let subscribers = subscription_cache.fetch_subscribers(request).await.unwrap();
+            let _ = response_sender.send(subscribers).await;
         }
+        
     }
 
     #[inline(always)]
