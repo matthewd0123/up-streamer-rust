@@ -14,7 +14,6 @@
 use std::collections::{HashMap, HashSet};
 use async_std::sync::Mutex;
 use up_rust::{UStatus, UUri};
-use serde::{Serialize, Deserialize};
 
 pub type SubscribersMap =
     Mutex<HashMap<UUri, HashSet<UUri>>>;
@@ -74,7 +73,6 @@ pub struct FetchSubscribersResponseFoo {
 }
 
 
-#[derive(Serialize, Deserialize)]
 pub struct SubscriptionCache {
     subscription_cache_map: SubscribersMap
 }

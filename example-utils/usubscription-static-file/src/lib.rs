@@ -17,6 +17,7 @@ use async_std::sync::Mutex;
 use subscription_cache::{SubscribersMap, SubscriptionCache};
 use serde_json;
 use std::fs;
+use std::str::FromStr;
 
 
 // pub trait USubscription {
@@ -37,15 +38,26 @@ impl USubscriptionStaticFile {
         Self {}
     }
 
-    pub fn fetch_subscribers(&self, topic: UUri) -> SubscriptionCache {
+    pub fn fetch_subscribers(&self, topic: UUri) -> HashMap<UUri, HashSet<UUri>>{
         // Reads in a file and builds it into a subscription_cache data type
         // This is a static file, so we will just return the same set of subscribers
         // for all URIs
         println!("fetch_subscribers for topic: {}", topic);
         let subscription_json_file = "./testdata.json";
         let data = fs::read_to_string(subscription_json_file).expect("Unable to read file");
-        let res: SubscriptionCache = serde_json::from_str(&data).expect("Unable to parse");
+        let res: serde_json::Value = serde_json::from_str(&data).expect("Unable to parse");
+
+        let mut subscribers_map = HashMap::new();
+        for (key, value) in res.as_object().unwrap() {
+            println!("key: {}, value: {}", key, value);
+            let mut subscriber_set: HashSet<UUri> = HashSet::new();
+            for subscriber in value.as_array().unwrap() {
+                println!("subscriber: {}", subscriber);
+                subscriber_set.insert(UUri::from_str(&subscriber.to_string()).unwrap());
+            }
+            subscribers_map.insert(UUri::from_str(&key.to_string()).unwrap(), subscriber_set);
+        }
         println!("{}", res);
-        res
+        subscribers_map
     }
 } 

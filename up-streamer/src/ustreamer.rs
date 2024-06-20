@@ -453,7 +453,7 @@ impl UStreamer {
             resource_id: 0xFFFF,    // any
             ..Default::default()
         };
-        let subscriptions = usubscription.fetch_subscribers(uuri);
+        let subscriptions = Mutex::new(usubscription.fetch_subscribers(uuri));
         let subscription_cache_foo = Arc::new(Mutex::new(SubscriptionCache::new(subscriptions)));
 
         let instance = Self {
