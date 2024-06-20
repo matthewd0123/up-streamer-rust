@@ -4393,6 +4393,7 @@ dependencies = [
  "env_logger 0.10.2",
  "hello-world-protos",
  "log",
+ "protobuf",
  "tokio",
  "up-rust",
  "up-streamer",
@@ -4442,7 +4443,7 @@ dependencies = [
 [[package]]
 name = "up-transport-vsomeip"
 version = "0.1.0"
-source = "git+https://github.com/PLeVasseur/up-client-vsomeip-rust.git?branch=feature/initial-implementation#0ba0dd5e561b802bffd42f130d16d92dde1aa830"
+source = "git+https://github.com/PLeVasseur/up-client-vsomeip-rust.git?branch=feature/initial-implementation#db97c69eb9f1967ccef0345c3f8ce6a9e5870c03"
 dependencies = [
  "async-trait",
  "bytes",
@@ -4613,7 +4614,7 @@ checksum = "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64"
 [[package]]
 name = "vsomeip-proc-macro"
 version = "0.1.0"
-source = "git+https://github.com/PLeVasseur/up-client-vsomeip-rust.git?branch=feature/initial-implementation#0ba0dd5e561b802bffd42f130d16d92dde1aa830"
+source = "git+https://github.com/PLeVasseur/up-client-vsomeip-rust.git?branch=feature/initial-implementation#db97c69eb9f1967ccef0345c3f8ce6a9e5870c03"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4624,7 +4625,7 @@ dependencies = [
 [[package]]
 name = "vsomeip-sys"
 version = "0.1.0"
-source = "git+https://github.com/PLeVasseur/up-client-vsomeip-rust.git?branch=feature/initial-implementation#0ba0dd5e561b802bffd42f130d16d92dde1aa830"
+source = "git+https://github.com/PLeVasseur/up-client-vsomeip-rust.git?branch=feature/initial-implementation#db97c69eb9f1967ccef0345c3f8ce6a9e5870c03"
 dependencies = [
  "autocxx",
  "autocxx-build",
