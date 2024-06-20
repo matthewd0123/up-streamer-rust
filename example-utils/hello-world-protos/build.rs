@@ -65,6 +65,10 @@ fn get_and_build_protos(
             file_path_buf.push("example/hello_world/v1")
         }
 
+        if url.contains("uprotocol/uoptions.proto") {
+            file_path_buf.push("uprotocol");
+        }
+
         file_path_buf.push(file_name); // Push the file name to the path buffer
 
         // Create the directory path if it doesn't exist
