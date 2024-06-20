@@ -3828,6 +3828,7 @@ dependencies = [
  "log",
  "prost",
  "protobuf",
+ "serde",
  "serde_json",
  "up-rust",
  "uuid",
@@ -4415,6 +4416,7 @@ dependencies = [
  "up-streamer",
  "up-transport-vsomeip",
  "up-transport-zenoh",
+ "usubscription-static-file",
  "zenoh",
 ]
 
@@ -4455,6 +4457,7 @@ dependencies = [
  "serde_json",
  "subscription-cache",
  "up-rust",
+ "usubscription-static-file",
  "uuid",
 ]
 
@@ -4524,6 +4527,17 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+]
+
+[[package]]
+name = "usubscription-static-file"
+version = "0.1.5-dev"
+dependencies = [
+ "async-std",
+ "serde_json",
+ "subscription-cache",
+ "up-rust",
+ "uriparse",
 ]
 
 [[package]]
