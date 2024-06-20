@@ -14,7 +14,7 @@
 use std::collections::{HashSet, HashMap};
 use up_rust::{UUri, UStatus};
 use async_std::sync::Mutex;
-use subscription_cache::{SubscribersMap};
+use subscription_cache::{SubscribersMap, SubscriptionCache};
 use serde_json;
 use std::fs;
 
@@ -37,16 +37,15 @@ impl USubscriptionStaticFile {
         Self {}
     }
 
-    pub fn fetch_subscribers(&self, topic: UUri) -> SubscribersMap {
+    pub fn fetch_subscribers(&self, topic: UUri) -> SubscriptionCache {
         // Reads in a file and builds it into a subscription_cache data type
         // This is a static file, so we will just return the same set of subscribers
         // for all URIs
         println!("fetch_subscribers for topic: {}", topic);
         let subscription_json_file = "./testdata.json";
         let data = fs::read_to_string(subscription_json_file).expect("Unable to read file");
-        let res: serde_json::Value = serde_json::from_str(&data).expect("Unable to parse");
+        let res: SubscriptionCache = serde_json::from_str(&data).expect("Unable to parse");
         println!("{}", res);
-        // SubscriptionCache::new(res)
-        todo!()
+        res
     }
 } 
