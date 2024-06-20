@@ -1,0 +1,5 @@
+{
+    "/body.access/1/2/3": ["/test.app/1/2/3", "/test.app2/1/2/3", "test.app3/1/2/3"],
+    "/body.cabin_climate/1/1/1": ["test.app/1/2/3"],
+    "/body.camera/3/2/1": ["test.app2/1/2/3"]
+}

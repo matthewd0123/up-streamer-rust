@@ -14,8 +14,7 @@ resolver = "2"
 members = [
     "example-utils/hello-world-protos",
     "up-linux-streamer",
-    "up-streamer", "subscription-cache"
-]
+    "up-streamer", "subscription-cache", "example-utils/usubscription-static-file"]
 
 [workspace.package]
 rust-version = "1.76.0"

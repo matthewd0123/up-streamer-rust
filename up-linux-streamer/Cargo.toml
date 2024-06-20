@@ -20,6 +20,7 @@ env_logger = "0.10.2"
 log = "0.4.21"
 async-trait = "0.1.80"
 protobuf = { version = "3.3", features = ["with-bytes"] }
+usubscription-static-file = {path = "../example-utils/usubscription-static-file"}
 
 [dev-dependencies]
 hello-world-protos = { path = "../example-utils/hello-world-protos" }
