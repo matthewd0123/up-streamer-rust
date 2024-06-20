@@ -18,6 +18,7 @@ use subscription_cache::{SubscribersMap, SubscriptionCache};
 use serde_json;
 use std::fs;
 use std::str::FromStr;
+use uriparse::URIReference;
 
 
 // pub trait USubscription {
@@ -52,8 +53,9 @@ impl USubscriptionStaticFile {
             println!("key: {}, value: {}", key, value);
             let mut subscriber_set: HashSet<UUri> = HashSet::new();
             for subscriber in value.as_array().unwrap() {
-                println!("subscriber: {}", subscriber);
-                subscriber_set.insert(UUri::from_str(&subscriber.to_string()).unwrap());
+                println!("subscriber: {}", subscriber.to_string());
+                let uri: UUri = UUri::from_str(&subscriber.to_string()).expect("ah");
+                subscriber_set.insert(uri);
             }
             subscribers_map.insert(UUri::from_str(&key.to_string()).unwrap(), subscriber_set);
         }

@@ -15,3 +15,4 @@ async-std = { workspace = true, features = ["unstable"] }
 serde_json = { version = "1.0.111" }
 subscription-cache = {path="../../subscription-cache"}
 up-rust = { workspace = true }
+uriparse = { version = "0.6" }

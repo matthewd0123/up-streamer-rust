@@ -4537,6 +4537,7 @@ dependencies = [
  "serde_json",
  "subscription-cache",
  "up-rust",
+ "uriparse",
 ]
 
 [[package]]
