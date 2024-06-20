@@ -11,77 +11,73 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-use std::collections::{HashMap, HashSet};
 use async_std::sync::Mutex;
+use std::collections::{HashMap, HashSet};
 use up_rust::{UStatus, UUri};
 
-pub type SubscribersMap =
-    Mutex<HashMap<UUri, HashSet<UUri>>>;
-
+pub type SubscribersMap = Mutex<HashMap<UUri, HashSet<UUri>>>;
 
 pub struct SubscriberInfoFoo {
-    pub uri: UUri
+    pub uri: UUri,
 }
 
 pub struct SubscriptionRequestFoo {
     pub topic: UUri,
-    pub subscriber: SubscriberInfoFoo
+    pub subscriber: SubscriberInfoFoo,
 }
 
 pub enum State {
     Unsubscribed = 0,
     SubscribePending = 1,
     Subscribed = 2,
-    UnsubscribePending = 3
+    UnsubscribePending = 3,
 }
 
 pub struct SubscriptionStatusFoo {
     pub state: State,
-    pub message: String
+    pub message: String,
 }
 
 pub struct SubscriptionResponseFoo {
     pub status: SubscriptionStatusFoo,
-    pub topic: UUri
+    pub topic: UUri,
 }
 
 pub struct UnsubscribeRequestFoo {
     pub topic: UUri,
-    pub subscriber: SubscriberInfoFoo
+    pub subscriber: SubscriberInfoFoo,
 }
 
 pub struct FetchSubscriptionsRequestFoo {
-    pub topic: UUri
+    pub topic: UUri,
 }
 
 pub struct SubscriptionFoo {
     pub topic: UUri,
     pub subscriber: SubscriberInfoFoo,
-    pub status: SubscriptionStatusFoo
+    pub status: SubscriptionStatusFoo,
 }
 
 pub struct FetchSubscriptionsResponseFoo {
-    pub subscriptions: HashSet<SubscriptionFoo>
+    pub subscriptions: HashSet<SubscriptionFoo>,
 }
 
 pub struct FetchSubscribersRequestFoo {
-    pub topic: UUri
+    pub topic: UUri,
 }
 
 pub struct FetchSubscribersResponseFoo {
-    pub subscribers: HashSet<UUri>
+    pub subscribers: HashSet<UUri>,
 }
 
-
 pub struct SubscriptionCache {
-    subscription_cache_map: SubscribersMap
+    subscription_cache_map: SubscribersMap,
 }
 
 impl SubscriptionCache {
-
     pub fn new(subscription_cache_map: SubscribersMap) -> Self {
         Self {
-            subscription_cache_map
+            subscription_cache_map,
         }
     }
 
@@ -138,9 +134,18 @@ impl SubscriptionCache {
     //     todo!()
     // }
 
-    pub async fn fetch_subscribers_internal(&self, fetch_subscribers_request: FetchSubscribersRequestFoo) -> Result<FetchSubscribersResponseFoo, UStatus> {
+    pub async fn fetch_subscribers_internal(
+        &self,
+        fetch_subscribers_request: FetchSubscribersRequestFoo,
+    ) -> Result<FetchSubscribersResponseFoo, UStatus> {
         Ok(FetchSubscribersResponseFoo {
-            subscribers: self.subscription_cache_map.lock().await.get(&fetch_subscribers_request.topic).cloned().unwrap_or_default()
+            subscribers: self
+                .subscription_cache_map
+                .lock()
+                .await
+                .get(&fetch_subscribers_request.topic)
+                .cloned()
+                .unwrap_or_default(),
         })
     }
 }

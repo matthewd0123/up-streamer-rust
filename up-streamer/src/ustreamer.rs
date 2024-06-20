@@ -22,10 +22,12 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str;
 use std::thread;
+use subscription_cache::{
+    FetchSubscribersRequestFoo, FetchSubscribersResponseFoo, SubscriberInfoFoo, SubscriptionCache,
+    SubscriptionRequestFoo,
+};
 use up_rust::{UCode, UListener, UMessage, UMessageType, UStatus, UTransport, UUIDBuilder, UUri};
-use subscription_cache::{FetchSubscribersRequestFoo, FetchSubscribersResponseFoo, SubscriberInfoFoo, SubscriptionCache, SubscriptionRequestFoo};
 use usubscription_static_file::USubscriptionStaticFile;
-
 
 const USTREAMER_TAG: &str = "UStreamer:";
 const USTREAMER_FN_NEW_TAG: &str = "new():";
@@ -68,23 +70,28 @@ type TransportForwardersContainer =
 struct TransportForwarders {
     message_queue_size: usize,
     forwarders: TransportForwardersContainer,
-    subscription_cache: Arc<Mutex<SubscriptionCache>>
-    // request_sender: Sender<FetchSubscribersRequestFoo>,
-    // response_receiver: Receiver<FetchSubscribersResponseFoo>
+    subscription_cache: Arc<Mutex<SubscriptionCache>>, // request_sender: Sender<FetchSubscribersRequestFoo>,
+                                                       // response_receiver: Receiver<FetchSubscribersResponseFoo>
 }
 
 impl TransportForwarders {
-    pub fn new(message_queue_size: usize, subscription_cache: Arc<Mutex<SubscriptionCache>>) -> Self {
+    pub fn new(
+        message_queue_size: usize,
+        subscription_cache: Arc<Mutex<SubscriptionCache>>,
+    ) -> Self {
         Self {
             message_queue_size,
             forwarders: Mutex::new(HashMap::new()),
-            subscription_cache
-            // request_sender,
-            // response_receiver
+            subscription_cache, // request_sender,
+                                // response_receiver
         }
     }
 
-    pub async fn insert(&mut self, out_transport: Arc<dyn UTransport>, out_authority_name: String) -> Sender<Arc<UMessage>> {
+    pub async fn insert(
+        &mut self,
+        out_transport: Arc<dyn UTransport>,
+        out_authority_name: String,
+    ) -> Sender<Arc<UMessage>> {
         let out_comparable_transport = ComparableTransport::new(out_transport.clone());
 
         let mut transport_forwarders = self.forwarders.lock().await;
@@ -96,7 +103,16 @@ impl TransportForwarders {
                     "{TRANSPORT_FORWARDERS_TAG}:{TRANSPORT_FORWARDERS_FN_INSERT_TAG} Inserting..."
                 );
                 let (tx, rx) = channel::bounded(self.message_queue_size);
-                (0, Arc::new(TransportForwarder::new(out_transport, out_authority_name, rx, self.subscription_cache.clone())), tx)
+                (
+                    0,
+                    Arc::new(TransportForwarder::new(
+                        out_transport,
+                        out_authority_name,
+                        rx,
+                        self.subscription_cache.clone(),
+                    )),
+                    tx,
+                )
             });
         *active += 1;
         sender.clone()
@@ -421,7 +437,7 @@ pub struct UStreamer {
     transport_forwarders: TransportForwarders,
     forwarding_listeners: ForwardingListeners,
     subscription_cache: Arc<Mutex<SubscriptionCache>>,
-    usubscription: Arc<USubscriptionStaticFile>
+    usubscription: Arc<USubscriptionStaticFile>,
 }
 
 impl UStreamer {
@@ -432,7 +448,11 @@ impl UStreamer {
     /// * name - Used to uniquely identify this UStreamer in logs
     /// * message_queue_size - Determines size of channel used to communicate between `ForwardingListener`
     ///                        and the worker tasks for each currently endpointd `UTransport`
-    pub fn new(name: &str, message_queue_size: u16, usubscription: Arc<USubscriptionStaticFile>) -> Self {
+    pub fn new(
+        name: &str,
+        message_queue_size: u16,
+        usubscription: Arc<USubscriptionStaticFile>,
+    ) -> Self {
         let name = format!("{USTREAMER_TAG}:{name}:");
         // Try to initiate logging.
         // Required in case of dynamic lib, otherwise no logs.
@@ -460,10 +480,13 @@ impl UStreamer {
             name: name.to_string(),
             registered_forwarding_rules: Mutex::new(HashSet::new()),
             // transport_forwarders: TransportForwarders::new(message_queue_size as usize, req_send, res_rcv),
-            transport_forwarders: TransportForwarders::new(message_queue_size as usize, subscription_cache_foo.clone()),
+            transport_forwarders: TransportForwarders::new(
+                message_queue_size as usize,
+                subscription_cache_foo.clone(),
+            ),
             forwarding_listeners: ForwardingListeners::new(),
             subscription_cache: subscription_cache_foo.clone(),
-            usubscription
+            usubscription,
         };
 
         // thread::spawn(move || {
@@ -473,14 +496,13 @@ impl UStreamer {
         instance
     }
 
-
     // async fn receive_cache_requests(request_receiver: Receiver<FetchSubscribersRequestFoo>, response_sender: Sender<FetchSubscribersResponseFoo>) {
     //     let subscription_cache = SubscriptionCache::new();
     //     while let Ok(request) = request_receiver.recv().await {
     //         let subscribers = subscription_cache.fetch_subscribers(request).await.unwrap();
     //         let _ = response_sender.send(subscribers).await;
     //     }
-        
+
     // }
 
     #[inline(always)]
@@ -555,7 +577,7 @@ impl UStreamer {
                 r#in.authority.clone(),
                 out.authority.clone(),
                 in_comparable_transport,
-                out_comparable_transport
+                out_comparable_transport,
             )) {
                 true => {
                     let out_sender = self
@@ -567,7 +589,7 @@ impl UStreamer {
                             r#in.transport.clone(),
                             &out.authority,
                             &Self::forwarding_id(&r#in, &out),
-                            out_sender
+                            out_sender,
                         )
                         .await;
                     Ok(())
@@ -680,7 +702,12 @@ const TRANSPORT_FORWARDER_FN_MESSAGE_FORWARDING_LOOP_TAG: &str = "message_forwar
 pub(crate) struct TransportForwarder {}
 
 impl TransportForwarder {
-    fn new(out_transport: Arc<dyn UTransport>, out_authority_name: String, message_receiver: Receiver<Arc<UMessage>>, subscription_cache: Arc<Mutex<SubscriptionCache>>) -> Self {
+    fn new(
+        out_transport: Arc<dyn UTransport>,
+        out_authority_name: String,
+        message_receiver: Receiver<Arc<UMessage>>,
+        subscription_cache: Arc<Mutex<SubscriptionCache>>,
+    ) -> Self {
         let out_transport_clone = out_transport.clone();
         let message_receiver_clone = message_receiver.clone();
         let subscription_cache_clone = subscription_cache.clone();
@@ -691,7 +718,7 @@ impl TransportForwarder {
                 out_transport_clone,
                 out_authority_name,
                 message_receiver_clone,
-                subscription_cache_clone
+                subscription_cache_clone,
             ))
         });
 
@@ -703,7 +730,7 @@ impl TransportForwarder {
         out_transport: Arc<dyn UTransport>,
         out_authority_name: String,
         message_receiver: Receiver<Arc<UMessage>>,
-        subscription_cache: Arc<Mutex<SubscriptionCache>>
+        subscription_cache: Arc<Mutex<SubscriptionCache>>,
     ) {
         while let Ok(msg) = message_receiver.recv().await {
             debug!(
@@ -721,15 +748,20 @@ impl TransportForwarder {
                 | UMessageType::UMESSAGE_TYPE_RESPONSE
                 | UMessageType::UMESSAGE_TYPE_REQUEST => {
                     out_transport.send(msg.deref().clone()).await
-                },
+                }
                 UMessageType::UMESSAGE_TYPE_PUBLISH => {
                     let topic = &msg.attributes.source;
                     let fetch_subscribers_request = FetchSubscribersRequestFoo {
-                        topic: topic.clone().unwrap()
+                        topic: topic.clone().unwrap(),
                     };
-                    let response = subscription_cache.lock().await.fetch_subscribers_internal(FetchSubscribersRequestFoo {
-                        topic: topic.clone().unwrap()
-                    }).await.unwrap();
+                    let response = subscription_cache
+                        .lock()
+                        .await
+                        .fetch_subscribers_internal(FetchSubscribersRequestFoo {
+                            topic: topic.clone().unwrap(),
+                        })
+                        .await
+                        .unwrap();
                     let mut authority_name_hash_set = HashSet::new();
                     for subscriber in response.subscribers {
                         authority_name_hash_set.insert(subscriber.authority_name);
@@ -739,7 +771,7 @@ impl TransportForwarder {
                     } else {
                         Ok(())
                     }
-                },
+                }
                 _ => {
                     dbg!("HI");
                     todo!()
@@ -812,9 +844,9 @@ impl UListener for ForwardingListener {
 mod tests {
     use crate::{Endpoint, UStreamer};
     use async_trait::async_trait;
-    use usubscription_static_file::USubscriptionStaticFile;
     use std::sync::Arc;
     use up_rust::{UListener, UMessage, UStatus, UTransport, UUri};
+    use usubscription_static_file::USubscriptionStaticFile;
 
     pub struct UPClientFoo;
 
@@ -918,7 +950,6 @@ mod tests {
             remote_authority,
             remote_transport.clone(),
         );
-
 
         let usubscription = Arc::new(USubscriptionStaticFile::new());
         let mut ustreamer = UStreamer::new("foo_bar_streamer", 100, usubscription);

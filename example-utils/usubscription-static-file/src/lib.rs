@@ -10,28 +10,18 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
- 
-use std::collections::{HashSet, HashMap};
-use up_rust::{UUri, UStatus};
-use async_std::sync::Mutex;
-use subscription_cache::{SubscribersMap, SubscriptionCache};
+
 use serde_json;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::str::FromStr;
-use uriparse::URIReference;
-
-
-// pub trait USubscription {
-//     async fn fetch_all_subscribers(&self) -> SubscriptionCache;
-// }
-
+use up_rust::UUri;
 
 pub struct USubscriptionStaticFile {
     // subscribers_map: Mutex<HashMap<UUri, HashSet<UUri>>>,
 }
 
 impl USubscriptionStaticFile {
-
     pub fn new() -> Self {
         // USubscriptionStaticFile {
         //     subscribers_map: Mutex::new(HashMap::new())
@@ -39,7 +29,7 @@ impl USubscriptionStaticFile {
         Self {}
     }
 
-    pub fn fetch_subscribers(&self, topic: UUri) -> HashMap<UUri, HashSet<UUri>>{
+    pub fn fetch_subscribers(&self, topic: UUri) -> HashMap<UUri, HashSet<UUri>> {
         // Reads in a file and builds it into a subscription_cache data type
         // This is a static file, so we will just return the same set of subscribers
         // for all URIs
@@ -53,13 +43,29 @@ impl USubscriptionStaticFile {
             println!("key: {}, value: {}", key, value);
             let mut subscriber_set: HashSet<UUri> = HashSet::new();
             for subscriber in value.as_array().unwrap() {
-                println!("subscriber: {}", subscriber.to_string());
-                let uri: UUri = UUri::from_str(&subscriber.to_string()).expect("ah");
-                subscriber_set.insert(uri);
+                println!("subscriber: {}", subscriber.as_str().expect("Unable to parse"));
+                match UUri::from_str(&subscriber.as_str().expect("Unable to parse")) {
+                    Ok(uri) => {
+                        println!("All good for subscriber");
+                        subscriber_set.insert(uri);
+                    }
+                    Err(error) => {
+                        println!("Error with Deserializing Subscriber: {error}");
+                    }
+                };
             }
-            subscribers_map.insert(UUri::from_str(&key.to_string()).unwrap(), subscriber_set);
+            println!("key: {}", key.to_string());
+            match UUri::from_str(&key.to_string()) {
+                Ok(uri) => {
+                    println!("All good for key");
+                    subscribers_map.insert(uri, subscriber_set);
+                }
+                Err(error) => {
+                    println!("Error with Deserializing Key: {error}");
+                }
+            };
         }
         println!("{}", res);
         subscribers_map
     }
-} 
+}

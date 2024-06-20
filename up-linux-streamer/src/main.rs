@@ -9,8 +9,8 @@ use up_rust::UTransport;
 use up_streamer::{Endpoint, UStreamer};
 use up_transport_vsomeip::UPTransportVsomeip;
 use up_transport_zenoh::UPClientZenoh;
-use zenoh::config::Config;
 use usubscription_static_file::USubscriptionStaticFile;
+use zenoh::config::Config;
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
