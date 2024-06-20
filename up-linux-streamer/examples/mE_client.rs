@@ -92,7 +92,6 @@ async fn main() -> Result<(), UStatus> {
     loop {
         tokio::time::sleep(Duration::from_millis(1000)).await;
 
-        // TODO: Flesh out and incorporate the HelloRequest and HelloResponse protobuf objects into examples
         let hello_request = HelloRequest {
             name: format!("me_client@i={}", i).to_string(),
             ..Default::default()

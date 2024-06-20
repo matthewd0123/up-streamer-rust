@@ -1,5 +1,7 @@
 use async_trait::async_trait;
-use log::trace;
+use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
+use log::{error, trace};
+use protobuf::Message;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -25,8 +27,27 @@ impl UListener for ServiceRequestResponder {
     async fn on_receive(&self, msg: UMessage) {
         println!("ServiceRequestResponder: Received a message: {msg:?}");
 
+        let Some(payload_bytes) = msg.payload else {
+            panic!("No bytes available");
+        };
+        let hello_request = match HelloRequest::parse_from_bytes(&payload_bytes) {
+            Ok(hello_request) => {
+                println!("hello_request: {hello_request:?}");
+                hello_request
+            }
+            Err(err) => {
+                error!("Unable to parse HelloRequest: {err:?}");
+                return;
+            }
+        };
+
+        let hello_response = HelloResponse {
+            message: format!("The response to the request: {}", hello_request.name),
+            ..Default::default()
+        };
+
         let response_msg = UMessageBuilder::response_for_request(msg.attributes.as_ref().unwrap())
-            .build()
+            .build_with_protobuf_payload(&hello_response)
             .unwrap();
         self.client.send(response_msg).await.unwrap();
     }
