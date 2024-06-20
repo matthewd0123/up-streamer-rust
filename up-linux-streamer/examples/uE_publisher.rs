@@ -109,10 +109,10 @@ async fn main() -> Result<(), UStatus> {
         };
         i += 1;
 
-        let request_msg = UMessageBuilder::request(sink.clone(), source.clone(), REQUEST_TTL)
+        let request_msg = UMessageBuilder::publish(source.clone())
             .build_with_protobuf_payload(&hello_request)
             .unwrap();
-        println!("Sending Request message:\n{request_msg:?}");
+        println!("Sending Publish message:\n{request_msg:?}");
 
         client.send(request_msg).await?;
     }

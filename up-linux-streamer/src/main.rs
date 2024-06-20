@@ -10,11 +10,13 @@ use up_streamer::{Endpoint, UStreamer};
 use up_transport_vsomeip::UPTransportVsomeip;
 use up_transport_zenoh::UPClientZenoh;
 use usubscription_static_file::USubscriptionStaticFile;
-use zenoh::config::Config;
+use zenoh::config::{EndPoint, Config};
+use std::str::FromStr;
+
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
-    std::env::set_var("RUST_LOG", "trace");
+    //std::env::set_var("RUST_LOG", "trace");
     env_logger::init();
 
     let usubscription = Arc::new(USubscriptionStaticFile::new());
@@ -34,7 +36,14 @@ async fn main() -> Result<(), UStatus> {
     );
 
     // TODO: Probably make somewhat configurable?
-    let zenoh_config = Config::default();
+    // Create a configuration object
+    let mut zenoh_config = Config::default();
+
+    // Specify the address to listen on using IPv4
+    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7447");
+
+    // Add the IPv4 endpoint to the Zenoh configuration
+    zenoh_config.listen.endpoints.push(ipv4_endpoint.expect("FAIL"));
     // TODO: Add error handling if we fail to create a UPClientZenoh
     let zenoh_transport: Arc<dyn UTransport> = Arc::new(
         UPClientZenoh::new(zenoh_config, "linux".to_string())
