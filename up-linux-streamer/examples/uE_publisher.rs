@@ -21,40 +21,10 @@ use up_transport_zenoh::UPClientZenoh;
 use zenoh::config::{EndPoint, Config};
 use std::str::FromStr;
 
-const SERVICE_AUTHORITY: &str = "me_authority";
-const SERVICE_UE_ID: u16 = 0x4321;
-const SERVICE_UE_VERSION_MAJOR: u8 = 1;
-const SERVICE_RESOURCE_ID: u16 = 0x0421;
-
 const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
 const PUB_TOPIC_UE_ID: u16 = 0x1236;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
-
-const REQUEST_TTL: u32 = 1000;
-
-struct ServiceResponseListener;
-
-#[async_trait]
-impl UListener for ServiceResponseListener {
-    async fn on_receive(&self, msg: UMessage) {
-        println!("ServiceResponseListener: Received a message: {msg:?}");
-
-        let Some(payload_bytes) = msg.payload else {
-            panic!("No payload bytes");
-        };
-
-        let Ok(hello_response) = HelloResponse::parse_from_bytes(&payload_bytes) else {
-            panic!("Unable to parse into HelloResponse");
-        };
-
-        println!("Here we received response: {hello_response:?}");
-    }
-
-    async fn on_error(&self, err: UStatus) {
-        println!("ServiceResponseListener: Encountered an error: {err:?}");
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
@@ -86,18 +56,6 @@ async fn main() -> Result<(), UStatus> {
         resource_id: PUB_TOPIC_RESOURCE_ID as u32,
         ..Default::default()
     };
-    let sink = UUri {
-        authority_name: SERVICE_AUTHORITY.to_string(),
-        ue_id: SERVICE_UE_ID as u32,
-        ue_version_major: SERVICE_UE_VERSION_MAJOR as u32,
-        resource_id: SERVICE_RESOURCE_ID as u32,
-        ..Default::default()
-    };
-
-    //let service_response_listener: Arc<dyn UListener> = Arc::new(ServiceResponseListener);
-    //client
-    //    .register_listener(&sink, Some(&source), service_response_listener)
-    //    .await?;
 
     let mut i = 0;
     loop {
@@ -109,11 +67,11 @@ async fn main() -> Result<(), UStatus> {
         };
         i += 1;
 
-        let request_msg = UMessageBuilder::publish(source.clone())
+        let publish_msg = UMessageBuilder::publish(source.clone())
             .build_with_protobuf_payload(&hello_request)
             .unwrap();
-        println!("Sending Publish message:\n{request_msg:?}");
+        println!("Sending Publish message:\n{publish_msg:?}");
 
-        client.send(request_msg).await?;
+        client.send(publish_msg).await?;
     }
 }
