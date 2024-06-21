@@ -61,8 +61,9 @@ impl USubscriptionStaticFile {
             }
             println!("key: {}", key.to_string());
             match UUri::from_str(&key.to_string()) {
-                Ok(uri) => {
+                Ok(mut uri) => {
                     println!("All good for key");
+                    uri.resource_id = 0x8001;
                     subscribers_map.insert(uri, subscriber_set);
                 }
                 Err(error) => {
@@ -71,6 +72,7 @@ impl USubscriptionStaticFile {
             };
         }
         println!("{}", res);
+        dbg!(&subscribers_map);
         subscribers_map
     }
 }

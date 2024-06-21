@@ -10,9 +10,14 @@ use up_rust::{UListener, UMessage, UMessageBuilder, UStatus, UTransport, UUri};
 use up_transport_vsomeip::UPTransportVsomeip;
 
 const SERVICE_AUTHORITY: &str = "me_authority";
-const SERVICE_UE_ID: u16 = 0x4321;
+const SERVICE_UE_ID: u16 = 0x1236;
 const SERVICE_UE_VERSION_MAJOR: u8 = 1;
-const SERVICE_RESOURCE_ID: u16 = 0x0421;
+const SERVICE_RESOURCE_ID: u16 = 0x8001;
+
+const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
+const PUB_TOPIC_UE_ID: u16 = 0x1236;
+const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
+const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 struct ServiceRequestResponder {
     client: Arc<dyn UTransport>,
@@ -41,15 +46,6 @@ impl UListener for ServiceRequestResponder {
             }
         };
 
-        //let hello_response = HelloResponse {
-        //    message: format!("The response to the request: {}", hello_request.name),
-        //    ..Default::default()
-        //};
-
-        //let response_msg = UMessageBuilder::response_for_request(msg.attributes.as_ref().unwrap())
-        //    .build_with_protobuf_payload(&hello_response)
-        //    .unwrap();
-        //self.client.send(response_msg).await.unwrap();
     }
 
     async fn on_error(&self, err: UStatus) {
@@ -81,26 +77,20 @@ async fn main() -> Result<(), UStatus> {
     );
 
     let source_filter = UUri {
-        authority_name: "*".to_string(),
-        ue_id: 0x0000_FFFF,
-        ue_version_major: 0xFF,
-        resource_id: 0xFFFF,
+        authority_name: PUB_TOPIC_AUTHORITY.to_string(),
+        ue_id: PUB_TOPIC_UE_ID as u32,
+        ue_version_major: PUB_TOPIC_UE_VERSION_MAJOR as u32,
+        resource_id: PUB_TOPIC_RESOURCE_ID as u32,
         ..Default::default()
     };
-    let sink_filter = UUri {
-        authority_name: SERVICE_AUTHORITY.to_string(),
-        ue_id: SERVICE_UE_ID as u32,
-        ue_version_major: SERVICE_UE_VERSION_MAJOR as u32,
-        resource_id: SERVICE_RESOURCE_ID as u32,
-        ..Default::default()
-    };
+
     let service_request_responder: Arc<dyn UListener> =
         Arc::new(ServiceRequestResponder::new(service.clone()));
     // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
     service
         .register_listener(
             &source_filter,
-            Some(&sink_filter),
+            None,
             service_request_responder.clone(),
         )
         .await?;

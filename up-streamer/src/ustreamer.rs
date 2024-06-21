@@ -189,6 +189,15 @@ impl ForwardingListeners {
                 } else {
                     debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
                 }
+                
+                let pub_reg_res = task::block_on(in_transport
+                    .register_listener(&any_uuri(), None, forwarding_listener.clone()));
+
+                if let Err(err) = pub_reg_res {
+                    warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
+                } else {
+                    debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
+                }
 
                 (
                     0,
@@ -464,8 +473,6 @@ impl UStreamer {
             &name, USTREAMER_TAG, USTREAMER_FN_NEW_TAG
         );
 
-        // let (req_send, req_rcv) = channel::unbounded::<FetchSubscribersRequestFoo>();
-        // let (res_send, res_rcv) = channel::unbounded::<FetchSubscribersResponseFoo>();
 
         let uuri: UUri = UUri {
             authority_name: "me_authority".to_string(),
@@ -480,7 +487,6 @@ impl UStreamer {
         let instance = Self {
             name: name.to_string(),
             registered_forwarding_rules: Mutex::new(HashSet::new()),
-            // transport_forwarders: TransportForwarders::new(message_queue_size as usize, req_send, res_rcv),
             transport_forwarders: TransportForwarders::new(
                 message_queue_size as usize,
                 subscription_cache_foo.clone(),
@@ -490,21 +496,8 @@ impl UStreamer {
             usubscription,
         };
 
-        // thread::spawn(move || {
-        //     task::block_on(Self::receive_cache_requests(req_rcv.clone(), res_send.clone()))
-        // });
-
         instance
     }
-
-    // async fn receive_cache_requests(request_receiver: Receiver<FetchSubscribersRequestFoo>, response_sender: Sender<FetchSubscribersResponseFoo>) {
-    //     let subscription_cache = SubscriptionCache::new();
-    //     while let Ok(request) = request_receiver.recv().await {
-    //         let subscribers = subscription_cache.fetch_subscribers(request).await.unwrap();
-    //         let _ = response_sender.send(subscribers).await;
-    //     }
-
-    // }
 
     #[inline(always)]
     fn forwarding_id(r#in: &Endpoint, out: &Endpoint) -> String {
@@ -751,6 +744,7 @@ impl TransportForwarder {
                     out_transport.send(msg.deref().clone()).await
                 }
                 UMessageType::UMESSAGE_TYPE_PUBLISH => {
+                    dbg!("Received message is of type UMESSAGE_TYPE_PUBLISH");
                     let topic = &msg.attributes.source;
                     let fetch_subscribers_request = FetchSubscribersRequestFoo {
                         topic: topic.clone().unwrap(),
@@ -768,6 +762,7 @@ impl TransportForwarder {
                         authority_name_hash_set.insert(subscriber.authority_name);
                     }
                     if authority_name_hash_set.contains(&out_authority_name) {
+                        dbg!("Sending to authority: {&out_authority_name}");
                         out_transport.send(msg.deref().clone()).await
                     } else {
                         Ok(())
