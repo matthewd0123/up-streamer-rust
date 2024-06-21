@@ -457,6 +457,7 @@ impl UStreamer {
         // Try to initiate logging.
         // Required in case of dynamic lib, otherwise no logs.
         // But cannot be done twice in case of static link.
+        std::env::set_var("RUST_LOG", "debug");
         let _ = env_logger::try_init();
         debug!(
             "{}:{}:{} UStreamer created",

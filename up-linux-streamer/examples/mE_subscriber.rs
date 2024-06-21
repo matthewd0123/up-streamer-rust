@@ -41,15 +41,15 @@ impl UListener for ServiceRequestResponder {
             }
         };
 
-        let hello_response = HelloResponse {
-            message: format!("The response to the request: {}", hello_request.name),
-            ..Default::default()
-        };
+        //let hello_response = HelloResponse {
+        //    message: format!("The response to the request: {}", hello_request.name),
+        //    ..Default::default()
+        //};
 
-        let response_msg = UMessageBuilder::response_for_request(msg.attributes.as_ref().unwrap())
-            .build_with_protobuf_payload(&hello_response)
-            .unwrap();
-        self.client.send(response_msg).await.unwrap();
+        //let response_msg = UMessageBuilder::response_for_request(msg.attributes.as_ref().unwrap())
+        //    .build_with_protobuf_payload(&hello_response)
+        //    .unwrap();
+        //self.client.send(response_msg).await.unwrap();
     }
 
     async fn on_error(&self, err: UStatus) {

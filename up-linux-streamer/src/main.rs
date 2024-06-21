@@ -16,7 +16,7 @@ use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
-    //std::env::set_var("RUST_LOG", "trace");
+    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
     let usubscription = Arc::new(USubscriptionStaticFile::new());

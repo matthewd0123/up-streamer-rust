@@ -26,10 +26,10 @@ const SERVICE_UE_ID: u16 = 0x4321;
 const SERVICE_UE_VERSION_MAJOR: u8 = 1;
 const SERVICE_RESOURCE_ID: u16 = 0x0421;
 
-const CLIENT_AUTHORITY: &str = "linux";
-const CLIENT_UE_ID: u16 = 0x1236;
-const CLIENT_UE_VERSION_MAJOR: u8 = 1;
-const CLIENT_RESOURCE_ID: u16 = 0;
+const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
+const PUB_TOPIC_UE_ID: u16 = 0x1236;
+const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
+const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 const REQUEST_TTL: u32 = 1000;
 
@@ -58,7 +58,7 @@ impl UListener for ServiceResponseListener {
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
-    std::env::set_var("RUST_LOG", "trace");
+    //std::env::set_var("RUST_LOG", "trace");
     env_logger::init();
 
     println!("uE_client");
@@ -80,10 +80,10 @@ async fn main() -> Result<(), UStatus> {
     );
 
     let source = UUri {
-        authority_name: CLIENT_AUTHORITY.to_string(),
-        ue_id: CLIENT_UE_ID as u32,
-        ue_version_major: CLIENT_UE_VERSION_MAJOR as u32,
-        resource_id: CLIENT_RESOURCE_ID as u32,
+        authority_name: PUB_TOPIC_AUTHORITY.to_string(),
+        ue_id: PUB_TOPIC_UE_ID as u32,
+        ue_version_major: PUB_TOPIC_UE_VERSION_MAJOR as u32,
+        resource_id: PUB_TOPIC_RESOURCE_ID as u32,
         ..Default::default()
     };
     let sink = UUri {
@@ -94,10 +94,10 @@ async fn main() -> Result<(), UStatus> {
         ..Default::default()
     };
 
-    let service_response_listener: Arc<dyn UListener> = Arc::new(ServiceResponseListener);
-    client
-        .register_listener(&sink, Some(&source), service_response_listener)
-        .await?;
+    //let service_response_listener: Arc<dyn UListener> = Arc::new(ServiceResponseListener);
+    //client
+    //    .register_listener(&sink, Some(&source), service_response_listener)
+    //    .await?;
 
     let mut i = 0;
     loop {
