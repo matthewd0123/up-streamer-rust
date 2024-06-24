@@ -12,7 +12,7 @@
  ********************************************************************************/
 
 use async_std::sync::Mutex;
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, ops::Sub};
 use up_rust::{UStatus, UUri};
 
 pub type SubscribersMap = Mutex<HashMap<UUri, HashSet<UUri>>>;
@@ -133,6 +133,10 @@ impl SubscriptionCache {
     // async fn unregister_for_notifications(&self, notifications_request: NotificationsRequest) -> Result<(), UStatus> {
     //     todo!()
     // }
+
+    pub async fn fetch_cache(&self) -> HashMap<UUri, HashSet<UUri>> {
+        self.subscription_cache_map.lock().await.clone()
+    }
 
     pub async fn fetch_subscribers_internal(
         &self,

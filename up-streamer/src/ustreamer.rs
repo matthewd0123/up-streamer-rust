@@ -22,10 +22,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str;
 use std::thread;
-use subscription_cache::{
-    FetchSubscribersRequestFoo, FetchSubscribersResponseFoo, SubscriberInfoFoo, SubscriptionCache,
-    SubscriptionRequestFoo,
-};
+use subscription_cache::{FetchSubscribersRequestFoo, SubscriptionCache};
 use up_rust::{UCode, UListener, UMessage, UMessageType, UStatus, UTransport, UUIDBuilder, UUri};
 use usubscription_static_file::USubscriptionStaticFile;
 
@@ -70,8 +67,7 @@ type TransportForwardersContainer =
 struct TransportForwarders {
     message_queue_size: usize,
     forwarders: TransportForwardersContainer,
-    subscription_cache: Arc<Mutex<SubscriptionCache>>, // request_sender: Sender<FetchSubscribersRequestFoo>,
-                                                       // response_receiver: Receiver<FetchSubscribersResponseFoo>
+    subscription_cache: Arc<Mutex<SubscriptionCache>>
 }
 
 impl TransportForwarders {
@@ -168,13 +164,16 @@ impl ForwardingListeners {
     pub async fn insert(
         &self,
         in_transport: Arc<dyn UTransport>,
+        in_authority: &str,
         out_authority: &str,
         forwarding_id: &str,
         out_sender: Sender<Arc<UMessage>>,
+        subscription_cache: Arc<Mutex<SubscriptionCache>>
     ) -> Option<Arc<ForwardingListener>> {
         let in_comparable_transport = ComparableTransport::new(in_transport.clone());
 
         let mut forwarding_listeners = self.listeners.lock().await;
+        let initial_subscriber_cache = task::block_on(subscription_cache.lock().await.fetch_cache());
 
         let (active, forwarding_listener) = forwarding_listeners
             .entry((in_comparable_transport.clone(), out_authority.to_string()))
@@ -189,13 +188,22 @@ impl ForwardingListeners {
                 } else {
                     debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
                 }
-                let pub_reg_res = task::block_on(in_transport
-                    .register_listener(&any_uuri(), None, forwarding_listener.clone()));
 
-                if let Err(err) = pub_reg_res {
-                    warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
-                } else {
-                    debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
+                for (topic, subscribers) in initial_subscriber_cache {
+                    let mut authority_name_hash_set = HashSet::new();
+                    for subscriber in subscribers {
+                        authority_name_hash_set.insert(subscriber.authority_name);
+                    }
+                    if authority_name_hash_set.contains(&in_authority.to_string()) {
+                        let reg_res = task::block_on(in_transport
+                            .register_listener(&topic, None, forwarding_listener.clone()));
+
+                        if let Err(err) = reg_res {
+                            warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
+                        } else {
+                            debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
+                        }
+                    }
                 }
 
                 (
@@ -579,9 +587,11 @@ impl UStreamer {
                     self.forwarding_listeners
                         .insert(
                             r#in.transport.clone(),
+                            &r#in.authority,
                             &out.authority,
                             &Self::forwarding_id(&r#in, &out),
                             out_sender,
+                            self.subscription_cache.clone()
                         )
                         .await;
                     Ok(())
@@ -732,45 +742,43 @@ impl TransportForwarder {
                 TRANSPORT_FORWARDER_FN_MESSAGE_FORWARDING_LOOP_TAG,
                 msg
             );
-            let msg_type = &msg.attributes.type_.enum_value_or_default();
-            // let send_res = out_transport.send(msg.deref().clone()).await;
+            let send_res = out_transport.send(msg.deref().clone()).await;
+            // let msg_type = &msg.attributes.type_.enum_value_or_default();
+            // // let send_res = out_transport.send(msg.deref().clone()).await;
 
-            let send_res = match msg_type {
-                UMessageType::UMESSAGE_TYPE_NOTIFICATION
-                | UMessageType::UMESSAGE_TYPE_RESPONSE
-                | UMessageType::UMESSAGE_TYPE_REQUEST => {
-                    out_transport.send(msg.deref().clone()).await
-                }
-                UMessageType::UMESSAGE_TYPE_PUBLISH => {
-                    dbg!("Received message is of type UMESSAGE_TYPE_PUBLISH");
-                    let topic = &msg.attributes.source;
-                    let fetch_subscribers_request = FetchSubscribersRequestFoo {
-                        topic: topic.clone().unwrap(),
-                    };
-                    let response = subscription_cache
-                        .lock()
-                        .await
-                        .fetch_subscribers_internal(FetchSubscribersRequestFoo {
-                            topic: topic.clone().unwrap(),
-                        })
-                        .await
-                        .unwrap();
-                    let mut authority_name_hash_set = HashSet::new();
-                    for subscriber in response.subscribers {
-                        authority_name_hash_set.insert(subscriber.authority_name);
-                    }
-                    if authority_name_hash_set.contains(&out_authority_name) {
-                        dbg!("Sending to authority: {&out_authority_name}");
-                        out_transport.send(msg.deref().clone()).await
-                    } else {
-                        Ok(())
-                    }
-                }
-                _ => {
-                    dbg!("HI");
-                    todo!()
-                }
-            };
+            // let send_res = match msg_type {
+            //     UMessageType::UMESSAGE_TYPE_NOTIFICATION
+            //     | UMessageType::UMESSAGE_TYPE_RESPONSE
+            //     | UMessageType::UMESSAGE_TYPE_REQUEST => {
+            //         out_transport.send(msg.deref().clone()).await
+            //     }
+            //     UMessageType::UMESSAGE_TYPE_PUBLISH => {
+            //         dbg!("Received message is of type UMESSAGE_TYPE_PUBLISH");
+            //         let topic = &msg.attributes.source;
+            //         let response = subscription_cache
+            //             .lock()
+            //             .await
+            //             .fetch_subscribers_internal(FetchSubscribersRequestFoo {
+            //                 topic: topic.clone().unwrap(),
+            //             })
+            //             .await
+            //             .unwrap();
+            //         let mut authority_name_hash_set = HashSet::new();
+            //         for subscriber in response.subscribers {
+            //             authority_name_hash_set.insert(subscriber.authority_name);
+            //         }
+            //         if authority_name_hash_set.contains(&out_authority_name) {
+            //             dbg!("Sending to authority: {&out_authority_name}");
+            //             out_transport.send(msg.deref().clone()).await
+            //         } else {
+            //             Ok(())
+            //         }
+            //     }
+            //     _ => {
+            //         dbg!("HI");
+            //         todo!()
+            //     }
+            // };
             if let Err(err) = send_res {
                 warn!(
                     "{}:{}:{} Sending on out_transport failed: {:?}",
