@@ -171,7 +171,7 @@ impl ForwardingListeners {
         subscription_cache: Arc<Mutex<SubscriptionCache>>
     ) -> Option<Arc<ForwardingListener>> {
         let in_comparable_transport = ComparableTransport::new(in_transport.clone());
-
+        debug!("HERE");
         let mut forwarding_listeners = self.listeners.lock().await;
         let initial_subscriber_cache = task::block_on(subscription_cache.lock().await.fetch_cache());
 
@@ -188,17 +188,28 @@ impl ForwardingListeners {
                 } else {
                     debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
                 }
+                //let pub_reg_res = task::block_on(in_transport
+                //    .register_listener(&any_uuri(), None, forwarding_listener.clone()));
 
+                //if let Err(err) = pub_reg_res {
+                //    warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
+                //} else {
+                //    debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
+                //}
                 for (topic, subscribers) in initial_subscriber_cache {
-                    let mut authority_name_hash_set = HashSet::new();
+                    let mut authority_name_hash_set: HashSet<String> = HashSet::new();
                     for subscriber in subscribers {
                         authority_name_hash_set.insert(subscriber.authority_name);
                     }
-                    if authority_name_hash_set.contains(&in_authority.to_string()) {
-                        let reg_res = task::block_on(in_transport
+                    // TODO: Should we also check if topic's authority matches in_transport's authority, i.e., topic belongs to in_transport
+                    // topic.authority_name == in_authority
+                    if authority_name_hash_set.contains(out_authority) {
+                    	 debug!("HIHIHIHI");
+                    	 //debug!("{topic}");
+                        let pub_reg_res = task::block_on(in_transport
                             .register_listener(&topic, None, forwarding_listener.clone()));
-
-                        if let Err(err) = reg_res {
+                        debug!("After");
+                        if let Err(err) = pub_reg_res {
                             warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
                         } else {
                             debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
