@@ -11,7 +11,6 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-use serde_json;
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, canonicalize};
 use std::path::PathBuf;
@@ -19,6 +18,12 @@ use std::str::FromStr;
 use up_rust::UUri;
 
 pub struct USubscriptionStaticFile {}
+
+impl Default for USubscriptionStaticFile {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl USubscriptionStaticFile {
     pub fn new() -> Self {
@@ -47,7 +52,7 @@ impl USubscriptionStaticFile {
                     "subscriber: {}",
                     subscriber.as_str().expect("Unable to parse")
                 );
-                match UUri::from_str(&subscriber.as_str().expect("Unable to parse")) {
+                match UUri::from_str(subscriber.as_str().expect("Unable to parse")) {
                     Ok(uri) => {
                         println!("All good for subscriber");
                         subscriber_set.insert(uri);
@@ -57,7 +62,7 @@ impl USubscriptionStaticFile {
                     }
                 };
             }
-            println!("key: {}", key.to_string());
+            println!("key: {key}");
             match UUri::from_str(&key.to_string()) {
                 Ok(mut uri) => {
                     println!("All good for key");

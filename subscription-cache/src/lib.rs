@@ -12,7 +12,7 @@
  ********************************************************************************/
 
 use async_std::sync::Mutex;
-use std::{collections::{HashMap, HashSet}, ops::Sub};
+use std::collections::{HashMap, HashSet};
 use up_rust::{UStatus, UUri};
 
 pub type SubscribersMap = Mutex<HashMap<UUri, HashSet<UUri>>>;

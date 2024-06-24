@@ -22,8 +22,8 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str;
 use std::thread;
-use subscription_cache::{FetchSubscribersRequestFoo, SubscriptionCache};
-use up_rust::{UCode, UListener, UMessage, UMessageType, UStatus, UTransport, UUIDBuilder, UUri};
+use subscription_cache::SubscriptionCache;
+use up_rust::{UCode, UListener, UMessage, UStatus, UTransport, UUIDBuilder, UUri};
 use usubscription_static_file::USubscriptionStaticFile;
 
 const USTREAMER_TAG: &str = "UStreamer:";
@@ -66,27 +66,22 @@ type TransportForwardersContainer =
 // and the Sender necessary to hand off to the listener for the in `UTransport`
 struct TransportForwarders {
     message_queue_size: usize,
-    forwarders: TransportForwardersContainer,
-    subscription_cache: Arc<Mutex<SubscriptionCache>>
+    forwarders: TransportForwardersContainer
 }
 
 impl TransportForwarders {
     pub fn new(
-        message_queue_size: usize,
-        subscription_cache: Arc<Mutex<SubscriptionCache>>,
+        message_queue_size: usize
     ) -> Self {
         Self {
             message_queue_size,
-            forwarders: Mutex::new(HashMap::new()),
-            subscription_cache, // request_sender,
-                                // response_receiver
+            forwarders: Mutex::new(HashMap::new())
         }
     }
 
     pub async fn insert(
         &mut self,
-        out_transport: Arc<dyn UTransport>,
-        out_authority_name: String,
+        out_transport: Arc<dyn UTransport>
     ) -> Sender<Arc<UMessage>> {
         let out_comparable_transport = ComparableTransport::new(out_transport.clone());
 
@@ -103,9 +98,7 @@ impl TransportForwarders {
                     0,
                     Arc::new(TransportForwarder::new(
                         out_transport,
-                        out_authority_name,
-                        rx,
-                        self.subscription_cache.clone(),
+                        rx
                     )),
                     tx,
                 )
@@ -164,16 +157,15 @@ impl ForwardingListeners {
     pub async fn insert(
         &self,
         in_transport: Arc<dyn UTransport>,
-        in_authority: &str,
         out_authority: &str,
         forwarding_id: &str,
         out_sender: Sender<Arc<UMessage>>,
-        subscription_cache: Arc<Mutex<SubscriptionCache>>
+        subscription_cache: Arc<Mutex<SubscriptionCache>>,
     ) -> Option<Arc<ForwardingListener>> {
         let in_comparable_transport = ComparableTransport::new(in_transport.clone());
-        debug!("HERE");
         let mut forwarding_listeners = self.listeners.lock().await;
-        let initial_subscriber_cache = task::block_on(subscription_cache.lock().await.fetch_cache());
+        let initial_subscriber_cache =
+            task::block_on(subscription_cache.lock().await.fetch_cache());
 
         let (active, forwarding_listener) = forwarding_listeners
             .entry((in_comparable_transport.clone(), out_authority.to_string()))
@@ -188,14 +180,6 @@ impl ForwardingListeners {
                 } else {
                     debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
                 }
-                //let pub_reg_res = task::block_on(in_transport
-                //    .register_listener(&any_uuri(), None, forwarding_listener.clone()));
-
-                //if let Err(err) = pub_reg_res {
-                //    warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
-                //} else {
-                //    debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
-                //}
                 for (topic, subscribers) in initial_subscriber_cache {
                     let mut authority_name_hash_set: HashSet<String> = HashSet::new();
                     for subscriber in subscribers {
@@ -464,6 +448,8 @@ pub struct UStreamer {
     transport_forwarders: TransportForwarders,
     forwarding_listeners: ForwardingListeners,
     subscription_cache: Arc<Mutex<SubscriptionCache>>,
+    // TODO: Use this when USubsription is implemented
+    #[allow(dead_code)]
     usubscription: Arc<USubscriptionStaticFile>,
 }
 
@@ -501,19 +487,16 @@ impl UStreamer {
         let subscriptions = Mutex::new(usubscription.fetch_subscribers(uuri));
         let subscription_cache_foo = Arc::new(Mutex::new(SubscriptionCache::new(subscriptions)));
 
-        let instance = Self {
+        Self {
             name: name.to_string(),
             registered_forwarding_rules: Mutex::new(HashSet::new()),
             transport_forwarders: TransportForwarders::new(
-                message_queue_size as usize,
-                subscription_cache_foo.clone(),
+                message_queue_size as usize
             ),
             forwarding_listeners: ForwardingListeners::new(),
             subscription_cache: subscription_cache_foo.clone(),
             usubscription,
-        };
-
-        instance
+        }
     }
 
     #[inline(always)]
@@ -593,16 +576,15 @@ impl UStreamer {
                 true => {
                     let out_sender = self
                         .transport_forwarders
-                        .insert(out.transport.clone(), out.authority.clone())
+                        .insert(out.transport.clone())
                         .await;
                     self.forwarding_listeners
                         .insert(
                             r#in.transport.clone(),
-                            &r#in.authority,
                             &out.authority,
                             &Self::forwarding_id(&r#in, &out),
                             out_sender,
-                            self.subscription_cache.clone()
+                            self.subscription_cache.clone(),
                         )
                         .await;
                     Ok(())
@@ -717,21 +699,16 @@ pub(crate) struct TransportForwarder {}
 impl TransportForwarder {
     fn new(
         out_transport: Arc<dyn UTransport>,
-        out_authority_name: String,
-        message_receiver: Receiver<Arc<UMessage>>,
-        subscription_cache: Arc<Mutex<SubscriptionCache>>,
+        message_receiver: Receiver<Arc<UMessage>>
     ) -> Self {
         let out_transport_clone = out_transport.clone();
         let message_receiver_clone = message_receiver.clone();
-        let subscription_cache_clone = subscription_cache.clone();
 
         thread::spawn(|| {
             task::block_on(Self::message_forwarding_loop(
                 UUIDBuilder::build().to_hyphenated_string(),
                 out_transport_clone,
-                out_authority_name,
-                message_receiver_clone,
-                subscription_cache_clone,
+                message_receiver_clone
             ))
         });
 
@@ -741,9 +718,7 @@ impl TransportForwarder {
     async fn message_forwarding_loop(
         id: String,
         out_transport: Arc<dyn UTransport>,
-        out_authority_name: String,
-        message_receiver: Receiver<Arc<UMessage>>,
-        subscription_cache: Arc<Mutex<SubscriptionCache>>,
+        message_receiver: Receiver<Arc<UMessage>>
     ) {
         while let Ok(msg) = message_receiver.recv().await {
             debug!(
