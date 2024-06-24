@@ -45,7 +45,6 @@ impl UListener for ServiceRequestResponder {
                 return;
             }
         };
-
     }
 
     async fn on_error(&self, err: UStatus) {
@@ -88,11 +87,7 @@ async fn main() -> Result<(), UStatus> {
         Arc::new(ServiceRequestResponder::new(service.clone()));
     // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
     service
-        .register_listener(
-            &source_filter,
-            None,
-            service_request_responder.clone(),
-        )
+        .register_listener(&source_filter, None, service_request_responder.clone())
         .await?;
 
     thread::park();

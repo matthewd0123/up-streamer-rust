@@ -6,13 +6,12 @@ use std::thread;
 use up_rust::UStatus;
 use up_rust::UTransport;
 
+use std::str::FromStr;
 use up_streamer::{Endpoint, UStreamer};
 use up_transport_vsomeip::UPTransportVsomeip;
 use up_transport_zenoh::UPClientZenoh;
 use usubscription_static_file::USubscriptionStaticFile;
-use zenoh::config::{EndPoint, Config};
-use std::str::FromStr;
-
+use zenoh::config::{Config, EndPoint};
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
@@ -43,7 +42,10 @@ async fn main() -> Result<(), UStatus> {
     let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7447");
 
     // Add the IPv4 endpoint to the Zenoh configuration
-    zenoh_config.listen.endpoints.push(ipv4_endpoint.expect("FAIL"));
+    zenoh_config
+        .listen
+        .endpoints
+        .push(ipv4_endpoint.expect("FAIL"));
     // TODO: Add error handling if we fail to create a UPClientZenoh
     let zenoh_transport: Arc<dyn UTransport> = Arc::new(
         UPClientZenoh::new(zenoh_config, "linux".to_string())

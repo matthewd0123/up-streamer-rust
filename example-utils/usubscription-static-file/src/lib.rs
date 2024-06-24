@@ -18,15 +18,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use up_rust::UUri;
 
-pub struct USubscriptionStaticFile {
-    // subscribers_map: Mutex<HashMap<UUri, HashSet<UUri>>>,
-}
+pub struct USubscriptionStaticFile {}
 
 impl USubscriptionStaticFile {
     pub fn new() -> Self {
-        // USubscriptionStaticFile {
-        //     subscribers_map: Mutex::new(HashMap::new())
-        // }
         Self {}
     }
 
@@ -39,8 +34,8 @@ impl USubscriptionStaticFile {
         let subscription_json_file = PathBuf::from(crate_dir).join("static-configs/testdata.json");
         let subscription_json_file = canonicalize(subscription_json_file).ok();
         println!("subscription_json_file: {subscription_json_file:?}");
-        // let subscription_json_file = "./testdata.json";
-        let data = fs::read_to_string(subscription_json_file.unwrap()).expect("Unable to read file");
+        let data =
+            fs::read_to_string(subscription_json_file.unwrap()).expect("Unable to read file");
         let res: serde_json::Value = serde_json::from_str(&data).expect("Unable to parse");
 
         let mut subscribers_map = HashMap::new();
@@ -48,7 +43,10 @@ impl USubscriptionStaticFile {
             println!("key: {}, value: {}", key, value);
             let mut subscriber_set: HashSet<UUri> = HashSet::new();
             for subscriber in value.as_array().unwrap() {
-                println!("subscriber: {}", subscriber.as_str().expect("Unable to parse"));
+                println!(
+                    "subscriber: {}",
+                    subscriber.as_str().expect("Unable to parse")
+                );
                 match UUri::from_str(&subscriber.as_str().expect("Unable to parse")) {
                     Ok(uri) => {
                         println!("All good for subscriber");

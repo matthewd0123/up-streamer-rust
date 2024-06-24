@@ -189,7 +189,6 @@ impl ForwardingListeners {
                 } else {
                     debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
                 }
-                
                 let pub_reg_res = task::block_on(in_transport
                     .register_listener(&any_uuri(), None, forwarding_listener.clone()));
 
@@ -472,7 +471,6 @@ impl UStreamer {
             "{}:{}:{} UStreamer created",
             &name, USTREAMER_TAG, USTREAMER_FN_NEW_TAG
         );
-
 
         let uuri: UUri = UUri {
             authority_name: "me_authority".to_string(),
