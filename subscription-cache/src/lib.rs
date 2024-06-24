@@ -13,67 +13,16 @@
 
 use async_std::sync::Mutex;
 use std::collections::{HashMap, HashSet};
-use up_rust::{UStatus, UUri};
+use up_rust::UUri;
 
 pub type SubscribersMap = Mutex<HashMap<UUri, HashSet<UUri>>>;
-
-pub struct SubscriberInfoFoo {
-    pub uri: UUri,
-}
-
-pub struct SubscriptionRequestFoo {
-    pub topic: UUri,
-    pub subscriber: SubscriberInfoFoo,
-}
-
-pub enum State {
-    Unsubscribed = 0,
-    SubscribePending = 1,
-    Subscribed = 2,
-    UnsubscribePending = 3,
-}
-
-pub struct SubscriptionStatusFoo {
-    pub state: State,
-    pub message: String,
-}
-
-pub struct SubscriptionResponseFoo {
-    pub status: SubscriptionStatusFoo,
-    pub topic: UUri,
-}
-
-pub struct UnsubscribeRequestFoo {
-    pub topic: UUri,
-    pub subscriber: SubscriberInfoFoo,
-}
-
-pub struct FetchSubscriptionsRequestFoo {
-    pub topic: UUri,
-}
-
-pub struct SubscriptionFoo {
-    pub topic: UUri,
-    pub subscriber: SubscriberInfoFoo,
-    pub status: SubscriptionStatusFoo,
-}
-
-pub struct FetchSubscriptionsResponseFoo {
-    pub subscriptions: HashSet<SubscriptionFoo>,
-}
-
-pub struct FetchSubscribersRequestFoo {
-    pub topic: UUri,
-}
-
-pub struct FetchSubscribersResponseFoo {
-    pub subscribers: HashSet<UUri>,
-}
-
 pub struct SubscriptionCache {
     subscription_cache_map: SubscribersMap,
 }
 
+/// A [`SubscriptionCache`] is used to store and manage subscriptions to
+/// topics. It is kept local to the streamer. The streamer will receive updates
+/// from the subscription service, and update the SubscriptionCache accordingly.
 impl SubscriptionCache {
     pub fn new(subscription_cache_map: SubscribersMap) -> Self {
         Self {
@@ -81,75 +30,7 @@ impl SubscriptionCache {
         }
     }
 
-    // pub async fn subscribe(&self, subscription_request: SubscriptionRequestFoo) -> Result<SubscriptionResponseFoo, UStatus> {
-
-    //     let mut subscribers_map = self.subscribers_map.lock().await;
-
-    //     // Check if the topic exists in the map
-    //     if !subscribers_map.contains_key(&subscription_request.topic) {
-    //         // If the topic does not exist, create a new HashSet for it
-    //         subscribers_map.insert(subscription_request.topic.clone(), HashSet::new());
-    //     }
-
-    //     // Add the subscriber to the HashSet associated with the topic
-    //     let was_inserted = if let Some(subscribers) = subscribers_map.get_mut(&subscription_request.topic) {
-    //         subscribers.insert(subscription_request.subscriber.uri.clone())
-    //     } else {
-    //         false
-    //     };
-
-    //     let subscription_status = if was_inserted {
-    //         SubscriptionStatusFoo {
-    //             state: State::Subscribed,
-    //             message: "Subscription success".to_string(),
-    //         }
-    //     } else {
-    //         SubscriptionStatusFoo {
-    //             state: State::Subscribed,
-    //             message: "Already subscribed".to_string(),
-    //         }
-    //     };
-
-    //     let subscription_response = SubscriptionResponseFoo {
-    //         status: subscription_status,
-    //         topic: subscription_request.topic,
-    //     };
-
-    //     Ok(subscription_response)
-    // }
-
-    // pub async fn unsubscribe(&self, unsubscribe_request: UnsubscribeRequestFoo) -> Result<(), UStatus> {
-    //     Ok(())
-    // }
-
-    // pub async fn fetch_subscriptions(&self, fetch_subscriptions_request: FetchSubscriptionsRequestFoo) -> Result<FetchSubscriptionsResponseFoo, UStatus> {
-    //     todo!()
-    // }
-
-    // async fn register_for_notifications(&self, notifications_request: NotificationsRequest) -> Result<(), UStatus> {
-    //     todo!()
-    // }
-
-    // async fn unregister_for_notifications(&self, notifications_request: NotificationsRequest) -> Result<(), UStatus> {
-    //     todo!()
-    // }
-
     pub async fn fetch_cache(&self) -> HashMap<UUri, HashSet<UUri>> {
         self.subscription_cache_map.lock().await.clone()
-    }
-
-    pub async fn fetch_subscribers_internal(
-        &self,
-        fetch_subscribers_request: FetchSubscribersRequestFoo,
-    ) -> Result<FetchSubscribersResponseFoo, UStatus> {
-        Ok(FetchSubscribersResponseFoo {
-            subscribers: self
-                .subscription_cache_map
-                .lock()
-                .await
-                .get(&fetch_subscribers_request.topic)
-                .cloned()
-                .unwrap_or_default(),
-        })
     }
 }

@@ -188,11 +188,8 @@ impl ForwardingListeners {
                     // TODO: Should we also check if topic's authority matches in_transport's authority, i.e., topic belongs to in_transport
                     // topic.authority_name == in_authority
                     if authority_name_hash_set.contains(out_authority) {
-                    	 debug!("HIHIHIHI");
-                    	 //debug!("{topic}");
                         let pub_reg_res = task::block_on(in_transport
                             .register_listener(&topic, None, forwarding_listener.clone()));
-                        debug!("After");
                         if let Err(err) = pub_reg_res {
                             warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
                         } else {
@@ -461,6 +458,7 @@ impl UStreamer {
     /// * name - Used to uniquely identify this UStreamer in logs
     /// * message_queue_size - Determines size of channel used to communicate between `ForwardingListener`
     ///                        and the worker tasks for each currently endpointd `UTransport`
+    /// * usubscription - Subscription service which will be used to store subscription info for topics.
     pub fn new(
         name: &str,
         message_queue_size: u16,
@@ -531,6 +529,8 @@ impl UStreamer {
     /// * [`UMessageType::UMESSAGE_TYPE_NOTIFICATION`][up_rust::UMessageType::UMESSAGE_TYPE_NOTIFICATION]
     /// * [`UMessageType::UMESSAGE_TYPE_REQUEST`][up_rust::UMessageType::UMESSAGE_TYPE_REQUEST]
     /// * [`UMessageType::UMESSAGE_TYPE_RESPONSE`][up_rust::UMessageType::UMESSAGE_TYPE_RESPONSE]
+    /// As well as a [`UMessageType::UMESSAGE_TYPE_PUBLISH`][up_rust::UMessageType::UMESSAGE_TYPE_PUBLISH]
+    /// type message which only has a source / topic contained in its attributes.
     ///
     /// # Parameters
     ///
@@ -608,6 +608,8 @@ impl UStreamer {
     /// * [`UMessageType::UMESSAGE_TYPE_NOTIFICATION`][up_rust::UMessageType::UMESSAGE_TYPE_NOTIFICATION]
     /// * [`UMessageType::UMESSAGE_TYPE_REQUEST`][up_rust::UMessageType::UMESSAGE_TYPE_REQUEST]
     /// * [`UMessageType::UMESSAGE_TYPE_RESPONSE`][up_rust::UMessageType::UMESSAGE_TYPE_RESPONSE]
+    /// As well as a [`UMessageType::UMESSAGE_TYPE_PUBLISH`][up_rust::UMessageType::UMESSAGE_TYPE_PUBLISH]
+    /// type message which only has a source / topic contained in its attributes.
     ///
     /// # Parameters
     ///
@@ -729,42 +731,6 @@ impl TransportForwarder {
                 msg
             );
             let send_res = out_transport.send(msg.deref().clone()).await;
-            // let msg_type = &msg.attributes.type_.enum_value_or_default();
-            // // let send_res = out_transport.send(msg.deref().clone()).await;
-
-            // let send_res = match msg_type {
-            //     UMessageType::UMESSAGE_TYPE_NOTIFICATION
-            //     | UMessageType::UMESSAGE_TYPE_RESPONSE
-            //     | UMessageType::UMESSAGE_TYPE_REQUEST => {
-            //         out_transport.send(msg.deref().clone()).await
-            //     }
-            //     UMessageType::UMESSAGE_TYPE_PUBLISH => {
-            //         dbg!("Received message is of type UMESSAGE_TYPE_PUBLISH");
-            //         let topic = &msg.attributes.source;
-            //         let response = subscription_cache
-            //             .lock()
-            //             .await
-            //             .fetch_subscribers_internal(FetchSubscribersRequestFoo {
-            //                 topic: topic.clone().unwrap(),
-            //             })
-            //             .await
-            //             .unwrap();
-            //         let mut authority_name_hash_set = HashSet::new();
-            //         for subscriber in response.subscribers {
-            //             authority_name_hash_set.insert(subscriber.authority_name);
-            //         }
-            //         if authority_name_hash_set.contains(&out_authority_name) {
-            //             dbg!("Sending to authority: {&out_authority_name}");
-            //             out_transport.send(msg.deref().clone()).await
-            //         } else {
-            //             Ok(())
-            //         }
-            //     }
-            //     _ => {
-            //         dbg!("HI");
-            //         todo!()
-            //     }
-            // };
             if let Err(err) = send_res {
                 warn!(
                     "{}:{}:{} Sending on out_transport failed: {:?}",

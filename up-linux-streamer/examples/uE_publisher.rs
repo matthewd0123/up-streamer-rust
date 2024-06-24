@@ -11,13 +11,11 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-use async_trait::async_trait;
-use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
-use protobuf::Message;
+use hello_world_protos::hello_world_service::HelloRequest;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use up_rust::{UListener, UMessage, UMessageBuilder, UPayloadFormat, UStatus, UTransport, UUri};
+use up_rust::{UMessageBuilder, UStatus, UTransport, UUri};
 use up_transport_zenoh::UPClientZenoh;
 use zenoh::config::{Config, EndPoint};
 
@@ -28,7 +26,6 @@ const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
-    //std::env::set_var("RUST_LOG", "trace");
     env_logger::init();
 
     println!("uE_client");

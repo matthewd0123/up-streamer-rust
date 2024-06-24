@@ -1,18 +1,16 @@
 use async_trait::async_trait;
-use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
+use hello_world_protos::hello_world_service::HelloRequest;
 use log::{error, trace};
 use protobuf::Message;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use up_rust::{UListener, UMessage, UMessageBuilder, UStatus, UTransport, UUri};
+use up_rust::{UListener, UMessage, UStatus, UTransport, UUri};
 use up_transport_vsomeip::UPTransportVsomeip;
 
 const SERVICE_AUTHORITY: &str = "me_authority";
 const SERVICE_UE_ID: u16 = 0x1236;
-const SERVICE_UE_VERSION_MAJOR: u8 = 1;
-const SERVICE_RESOURCE_ID: u16 = 0x8001;
 
 const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
 const PUB_TOPIC_UE_ID: u16 = 0x1236;
@@ -35,7 +33,7 @@ impl UListener for ServiceRequestResponder {
         let Some(payload_bytes) = msg.payload else {
             panic!("No bytes available");
         };
-        let hello_request = match HelloRequest::parse_from_bytes(&payload_bytes) {
+        let _ = match HelloRequest::parse_from_bytes(&payload_bytes) {
             Ok(hello_request) => {
                 println!("hello_request: {hello_request:?}");
                 hello_request
