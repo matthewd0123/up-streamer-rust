@@ -1,11 +1,10 @@
 use async_trait::async_trait;
-use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
+use hello_world_protos::hello_world_service::HelloRequest;
 use log::error;
 use protobuf::Message;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 use up_rust::{UListener, UMessage, UStatus, UTransport, UUri};
 use up_transport_zenoh::UPClientZenoh;
 use zenoh::config::{Config, EndPoint};
@@ -15,6 +14,7 @@ const PUB_TOPIC_UE_ID: u16 = 0x1237;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
+#[allow(dead_code)]
 struct ServiceRequestResponder {
     client: Arc<dyn UTransport>,
 }
@@ -31,7 +31,7 @@ impl UListener for ServiceRequestResponder {
         let Some(payload_bytes) = msg.payload else {
             panic!("No bytes available");
         };
-        let hello_request = match HelloRequest::parse_from_bytes(&payload_bytes) {
+        let _ = match HelloRequest::parse_from_bytes(&payload_bytes) {
             Ok(hello_request) => {
                 println!("hello_request: {hello_request:?}");
                 hello_request

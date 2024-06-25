@@ -11,6 +11,8 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
+#![allow(clippy::mutable_key_type)]
+
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, canonicalize};
 use std::path::PathBuf;

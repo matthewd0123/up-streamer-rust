@@ -17,6 +17,7 @@ const PUB_TOPIC_UE_ID: u16 = 0x1236;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
+#[allow(dead_code)]
 struct ServiceRequestResponder {
     client: Arc<dyn UTransport>,
 }

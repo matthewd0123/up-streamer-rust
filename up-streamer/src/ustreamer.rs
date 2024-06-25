@@ -11,6 +11,8 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
+#![allow(clippy::mutable_key_type)]
+
 use crate::endpoint::Endpoint;
 use async_std::channel::{Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
