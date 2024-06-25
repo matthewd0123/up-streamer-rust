@@ -4277,6 +4277,7 @@ name = "up-linux-streamer"
 version = "0.1.5-dev"
 dependencies = [
  "async-trait",
+ "chrono",
  "env_logger 0.10.2",
  "hello-world-protos",
  "log",
@@ -4306,6 +4307,7 @@ dependencies = [
  "up-streamer",
  "up-transport-vsomeip",
  "up-transport-zenoh",
+ "usubscription-static-file",
  "zenoh",
  "zenoh-core",
  "zenoh-plugin-trait",

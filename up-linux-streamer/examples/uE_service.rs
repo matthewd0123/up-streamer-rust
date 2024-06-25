@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
+use hello_world_protos::timeofday::TimeOfDay;
 use log::error;
 use protobuf::Message;
 use std::sync::Arc;
