@@ -1,19 +1,17 @@
 use async_trait::async_trait;
-use hello_world_protos::hello_world_service::HelloRequest;
-use log::{error, trace};
+use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
+use log::error;
 use protobuf::Message;
-use std::fs::canonicalize;
-use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 use up_rust::{UListener, UMessage, UStatus, UTransport, UUri};
-use up_transport_vsomeip::UPTransportVsomeip;
+use up_transport_zenoh::UPClientZenoh;
+use zenoh::config::{Config, EndPoint};
 
-const SERVICE_AUTHORITY: &str = "me_authority";
-const SERVICE_UE_ID: u16 = 0x1236;
-
-const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
-const PUB_TOPIC_UE_ID: u16 = 0x1236;
+const PUB_TOPIC_AUTHORITY: &str = "me_authority";
+const PUB_TOPIC_UE_ID: u16 = 0x1237;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
@@ -33,7 +31,7 @@ impl UListener for ServiceRequestResponder {
         let Some(payload_bytes) = msg.payload else {
             panic!("No bytes available");
         };
-        let _ = match HelloRequest::parse_from_bytes(&payload_bytes) {
+        let hello_request = match HelloRequest::parse_from_bytes(&payload_bytes) {
             Ok(hello_request) => {
                 println!("hello_request: {hello_request:?}");
                 hello_request
@@ -54,23 +52,26 @@ impl UListener for ServiceRequestResponder {
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
-    println!("mE_subscriber");
+    println!("uE_subscriber");
 
-    let crate_dir = env!("CARGO_MANIFEST_DIR");
-    // TODO: Make configurable to pass the path to the vsomeip config as a command line argument
-    let vsomeip_config = PathBuf::from(crate_dir).join("vsomeip-configs/mE_subscriber.json");
-    let vsomeip_config = canonicalize(vsomeip_config).ok();
-    trace!("vsomeip_config: {vsomeip_config:?}");
+    // TODO: Probably make somewhat configurable?
+    // Create a configuration object
+    let mut zenoh_config = Config::default();
 
-    // There will be a single vsomeip_transport, as there is a connection into device and a streamer
-    // TODO: Add error handling if we fail to create a UPTransportVsomeip
+    // Specify the address to listen on using IPv4
+    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7445");
+
+    // Add the IPv4 endpoint to the Zenoh configuration
+    zenoh_config
+        .listen
+        .endpoints
+        .push(ipv4_endpoint.expect("FAIL"));
+    // TODO: Add error handling if we fail to create a UPClientZenoh
+    // TODO: Add error handling if we fail to create a UPClientZenoh
     let service: Arc<dyn UTransport> = Arc::new(
-        UPTransportVsomeip::new_with_config(
-            &SERVICE_AUTHORITY.to_string(),
-            SERVICE_UE_ID,
-            &vsomeip_config.unwrap(),
-        )
-        .unwrap(),
+        UPClientZenoh::new(zenoh_config, "linux".to_string())
+            .await
+            .unwrap(),
     );
 
     let source_filter = UUri {

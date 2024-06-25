@@ -28,7 +28,7 @@ const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
-    println!("uE_client");
+    println!("uE_publisher");
 
     // TODO: Probably make somewhat configurable?
     // Create a configuration object
