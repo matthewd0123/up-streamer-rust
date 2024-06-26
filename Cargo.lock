@@ -4385,7 +4385,7 @@ dependencies = [
 [[package]]
 name = "up-transport-zenoh"
 version = "0.1.0"
-source = "git+https://github.com/eclipse-uprotocol/up-transport-zenoh-rust.git?rev=4607454b7dbb97d24668bfb64a615c1fe13a7c58#4607454b7dbb97d24668bfb64a615c1fe13a7c58"
+source = "git+https://github.com/eclipse-uprotocol/up-transport-zenoh-rust.git?rev=b977153265d22c4bb4bbbc20dea403342b9ab438#b977153265d22c4bb4bbbc20dea403342b9ab438"
 dependencies = [
  "anyhow",
  "async-trait",
