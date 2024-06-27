@@ -22,6 +22,7 @@ use log::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::str;
 use std::thread;
 use subscription_cache::SubscriptionCache;
@@ -265,6 +266,7 @@ impl ForwardingListeners {
 ///
 /// ## Typical usage
 /// ```
+/// use usubscription_static_file::USubscriptionStaticFile;
 /// use std::sync::Arc;
 /// use async_std::sync::Mutex;
 /// use up_rust::{UListener, UTransport};
@@ -387,7 +389,8 @@ impl ForwardingListeners {
 /// let remote_authority = "remote";
 /// let remote_endpoint = Endpoint::new("remote_endpoint", remote_authority, remote_transport);
 ///
-/// let mut streamer = UStreamer::new("hoge", 100);
+/// let usubscription = Arc::new(USubscriptionStaticFile::new(None));
+/// let mut streamer = UStreamer::new("hoge", 100, usubscription);
 ///
 /// // Add forwarding rules to endpoint local<->remote
 /// assert_eq!(
@@ -933,7 +936,7 @@ mod tests {
             remote_transport.clone(),
         );
 
-        let usubscription = Arc::new(USubscriptionStaticFile::new());
+        let usubscription = Arc::new(USubscriptionStaticFile::new(None));
         let mut ustreamer = UStreamer::new("foo_bar_streamer", 100, usubscription);
         // Add forwarding rules to endpoint local<->remote
         assert!(ustreamer
@@ -1006,7 +1009,7 @@ mod tests {
             remote_transport_b.clone(),
         );
 
-        let usubscription = Arc::new(USubscriptionStaticFile::new());
+        let usubscription = Arc::new(USubscriptionStaticFile::new(None));
         let mut ustreamer = UStreamer::new("foo_bar_streamer", 100, usubscription);
 
         // Add forwarding rules to endpoint local<->remote_a
@@ -1067,7 +1070,7 @@ mod tests {
             remote_transport.clone(),
         );
 
-        let usubscription = Arc::new(USubscriptionStaticFile::new());
+        let usubscription = Arc::new(USubscriptionStaticFile::new(None));
         let mut ustreamer = UStreamer::new("foo_bar_streamer", 100, usubscription);
 
         // Add forwarding rules to endpoint local<->remote_a

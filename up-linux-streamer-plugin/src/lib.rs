@@ -120,7 +120,7 @@ async fn run(runtime: Runtime, config: Config, flag: Arc<AtomicBool>) {
     trace!("called function on runtime: {timestamp_res:?}");
 
     env_logger::init();
-    let usubscription = Arc::new(USubscriptionStaticFile::new());
+    let usubscription = Arc::new(USubscriptionStaticFile::new(Some(config.usubscription_config.static_file.clone())));
 
 
     let mut streamer = UStreamer::new(

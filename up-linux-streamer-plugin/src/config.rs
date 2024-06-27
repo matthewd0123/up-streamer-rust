@@ -8,6 +8,7 @@ pub struct Config {
     pub(crate) up_streamer_config: UpStreamerConfig,
     pub(crate) host_config: HostConfig,
     pub(crate) someip_config: SomeipConfig,
+    pub(crate) usubscription_config: USubscriptionConfig,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -35,4 +36,10 @@ pub struct SomeipConfig {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum HostTransport {
     Zenoh,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct USubscriptionConfig {
+    pub(crate) static_file: PathBuf
 }

@@ -19,6 +19,9 @@
         default_someip_application_id_for_someip_subscriptions: 10,
         enabled: true
       },
+      usubscription_config: {
+        static_file: "static-configs/testdata.json"
+      }
     }
   }
 }

@@ -18,7 +18,7 @@ async fn main() -> Result<(), UStatus> {
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
-    let usubscription = Arc::new(USubscriptionStaticFile::new());
+    let usubscription = Arc::new(USubscriptionStaticFile::new(None));
     let mut streamer = UStreamer::new("up-linux-streamer", 10000, usubscription);
 
     let crate_dir = env!("CARGO_MANIFEST_DIR");
