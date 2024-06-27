@@ -8,10 +8,14 @@ use std::io::Read;
 use std::sync::Arc;
 use std::{env, thread};
 use up_rust::{UCode, UStatus, UTransport};
+
+use std::str::FromStr;
 use up_streamer::{Endpoint, UStreamer};
 use up_transport_vsomeip::UPTransportVsomeip;
 use up_transport_zenoh::UPClientZenoh;
+use usubscription_static_file::USubscriptionStaticFile;
 use zenoh::config::Config as ZenohConfig;
+use zenoh::config::Endpoint as ZenohEndpoint;
 
 #[derive(Parser)]
 #[command()]
@@ -23,6 +27,10 @@ struct StreamerArgs {
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
+
+    let usubscription = Arc::new(USubscriptionStaticFile::new(Some(PathBuf::from(
+        "example-utils/usubscription-static-file/static-configs/testdata.json",
+    ))));
 
     let args = StreamerArgs::parse();
 
@@ -46,9 +54,20 @@ async fn main() -> Result<(), UStatus> {
     let mut streamer = UStreamer::new(
         "up-linux-streamer",
         config.up_streamer_config.message_queue_size,
+        usubscription,
     );
 
     let zenoh_config = ZenohConfig::default();
+
+    // Specify the address to listen on using IPv4
+    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7447");
+
+    // Add the IPv4 endpoint to the Zenoh configuration
+    zenoh_config
+        .listen
+        .endpoints
+        .push(ipv4_endpoint.expect("FAIL"));
+
     let host_transport: Arc<dyn UTransport> = Arc::new(match config.host_config.transport {
         HostTransport::Zenoh => {
             UPClientZenoh::new(zenoh_config, config.host_config.authority.clone())
