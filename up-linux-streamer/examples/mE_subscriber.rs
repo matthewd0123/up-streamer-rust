@@ -25,8 +25,10 @@ use up_transport_vsomeip::UPTransportVsomeip;
 const SERVICE_AUTHORITY: &str = "me_authority";
 const SERVICE_UE_ID: u16 = 0x1236;
 
-const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
-const PUB_TOPIC_UE_ID: u16 = 0x1236;
+const REMOTE_AUTHORITY: &str = "linux";
+
+const PUB_TOPIC_AUTHORITY: &str = "linux";
+const PUB_TOPIC_UE_ID: u16 = 0x3039;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
@@ -81,6 +83,7 @@ async fn main() -> Result<(), UStatus> {
     let service: Arc<dyn UTransport> = Arc::new(
         UPTransportVsomeip::new_with_config(
             &SERVICE_AUTHORITY.to_string(),
+            &REMOTE_AUTHORITY.to_string(),
             SERVICE_UE_ID,
             &vsomeip_config.unwrap(),
         )

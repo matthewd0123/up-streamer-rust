@@ -21,13 +21,13 @@ use up_rust::core::usubscription::{
 };
 use up_rust::UUri;
 
-pub type SubscribersMap = Mutex<HashMap<MessageField<UUri>, HashSet<SubscriptionInformation>>>;
+pub type SubscribersMap = Mutex<HashMap<UUri, HashSet<SubscriptionInformation>>>;
 
 pub struct SubscriptionInformation {
-    pub subscriber: MessageField<SubscriberInfo>,
-    pub status: MessageField<SubscriptionStatus>,
-    pub attributes: MessageField<SubscribeAttributes>,
-    pub config: MessageField<EventDeliveryConfig>,
+    pub subscriber: SubscriberInfo,
+    pub status: SubscriptionStatus,
+    pub attributes: SubscribeAttributes,
+    pub config: EventDeliveryConfig,
 }
 
 impl Eq for SubscriptionInformation {}
@@ -66,13 +66,42 @@ impl SubscriptionCache {
     pub fn new(subscription_cache_map: FetchSubscriptionsResponse) -> Self {
         let mut subscription_cache_hash_map = HashMap::new();
         for subscription in subscription_cache_map.subscriptions {
-            let uri = subscription.topic;
+            let uri = if let Some(uri) = subscription.topic.into_option(){
+                uri
+            } else {
+                println!("Unable to parse URI from subscription, skipping...");
+                continue;
+            };
+            let subscriber = if let Some(subscriber) = subscription.subscriber.into_option(){
+                subscriber
+            } else {
+                println!("Unable to parse subscriber from subscription, skipping...");
+                continue;
+            };
+            let status = if let Some(status) = subscription.status.into_option(){
+                status
+            } else {
+                println!("Unable to parse status from subscription, setting as default");
+                SubscriptionStatus::default()
+            };
+            let attributes = if let Some(attributes) = subscription.attributes.into_option(){
+                attributes
+            } else {
+                println!("Unable to parse attributes from subscription, setting as default");
+                SubscribeAttributes::default()
+            };
+            let config = if let Some(config) = subscription.config.into_option(){
+                config
+            } else {
+                println!("Unable to parse config from subscription, setting as default");
+                EventDeliveryConfig::default()
+            };
             // Create new hashset if the key does not exist and insert the subscription
             let subscription_information = SubscriptionInformation {
-                subscriber: subscription.subscriber,
-                status: subscription.status,
-                attributes: subscription.attributes,
-                config: subscription.config,
+                subscriber,
+                status,
+                attributes,
+                config
             };
             subscription_cache_hash_map
                 .entry(uri)
@@ -86,7 +115,7 @@ impl SubscriptionCache {
 
     pub async fn fetch_cache(
         &self,
-    ) -> HashMap<MessageField<UUri>, HashSet<SubscriptionInformation>> {
+    ) -> HashMap<UUri, HashSet<SubscriptionInformation>> {
         let cache_map = self.subscription_cache_map.lock().await;
         let mut cloned_map = HashMap::new();
 

@@ -23,10 +23,12 @@ use std::time::Duration;
 use up_rust::{UMessageBuilder, UStatus, UTransport, UUri};
 use up_transport_vsomeip::UPTransportVsomeip;
 
-const PUB_TOPIC_AUTHORITY: &str = "linux";
-const PUB_TOPIC_UE_ID: u16 = 0x1237;
+const PUB_TOPIC_AUTHORITY: &str = "me_authority";
+const PUB_TOPIC_UE_ID: u16 = 0x5BA0;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
+
+const REMOTE_AUTHORITY: &str = "linux";
 
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
@@ -45,6 +47,7 @@ async fn main() -> Result<(), UStatus> {
     let client: Arc<dyn UTransport> = Arc::new(
         UPTransportVsomeip::new_with_config(
             &PUB_TOPIC_AUTHORITY.to_string(),
+            &REMOTE_AUTHORITY.to_string(),
             PUB_TOPIC_UE_ID,
             &vsomeip_config.unwrap(),
         )

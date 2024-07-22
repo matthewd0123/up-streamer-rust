@@ -177,7 +177,7 @@ impl ForwardingListeners {
                 for (topic, subscribers) in initial_subscriber_cache {
                     let mut authority_name_hash_set: HashSet<String> = HashSet::new();
                     for subscriber in subscribers {
-                        authority_name_hash_set.insert(subscriber.subscriber.get_or_default().uri.get_or_default().authority_name.clone());
+                        authority_name_hash_set.insert(subscriber.subscriber.uri.get_or_default().authority_name.clone());
                     }
                     // TODO: Should we also check if topic's authority matches in_transport's authority, i.e., topic belongs to in_transport
                     // topic.authority_name == in_authority

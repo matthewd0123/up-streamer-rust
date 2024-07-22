@@ -23,7 +23,7 @@ use up_transport_zenoh::UPClientZenoh;
 use zenoh::config::{Config, EndPoint};
 
 const PUB_TOPIC_AUTHORITY: &str = "me_authority";
-const PUB_TOPIC_UE_ID: u16 = 0x1237;
+const PUB_TOPIC_UE_ID: u16 = 0x5BA0;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 

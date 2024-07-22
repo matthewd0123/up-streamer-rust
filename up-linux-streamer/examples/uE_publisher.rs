@@ -22,8 +22,8 @@ use up_rust::{UMessageBuilder, UStatus, UTransport, UUri};
 use up_transport_zenoh::UPClientZenoh;
 use zenoh::config::{Config, EndPoint};
 
-const PUB_TOPIC_AUTHORITY: &str = "pub_topic";
-const PUB_TOPIC_UE_ID: u16 = 0x1236;
+const PUB_TOPIC_AUTHORITY: &str = "linux";
+const PUB_TOPIC_UE_ID: u16 = 0x3039;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 

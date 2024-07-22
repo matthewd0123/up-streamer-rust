@@ -68,9 +68,10 @@ impl USubscription for USubscriptionStaticFile {
             ..Default::default()
         };
 
+        println!("subscription_json_file: {:?}", subscription_json_file);
+
         match canonicalize(subscription_json_file) {
             Ok(subscription_json_file) => {
-                println!("subscription_json_file: {:?}", subscription_json_file);
 
                 match fs::read_to_string(&subscription_json_file) {
                     Ok(data) => match serde_json::from_str::<Value>(&data) {
