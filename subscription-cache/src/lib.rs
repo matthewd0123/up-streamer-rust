@@ -12,7 +12,6 @@
  ********************************************************************************/
 
 use async_std::sync::Mutex;
-use protobuf::MessageField;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use up_rust::core::usubscription::{
@@ -21,9 +20,11 @@ use up_rust::core::usubscription::{
 };
 use up_rust::UUri;
 
-pub type SubscribersMap = Mutex<HashMap<UUri, HashSet<SubscriptionInformation>>>;
+pub type SubscribersMap = Mutex<HashMap<String, HashSet<SubscriptionInformation>>>;
 
+// Tracks subscription information inside the SubscriptionCache
 pub struct SubscriptionInformation {
+    pub topic: UUri,
     pub subscriber: SubscriberInfo,
     pub status: SubscriptionStatus,
     pub attributes: SubscribeAttributes,
@@ -47,6 +48,7 @@ impl Hash for SubscriptionInformation {
 impl Clone for SubscriptionInformation {
     fn clone(&self) -> Self {
         Self {
+            topic: self.topic.clone(),
             subscriber: self.subscriber.clone(),
             status: self.status.clone(),
             attributes: self.attributes.clone(),
@@ -66,31 +68,31 @@ impl SubscriptionCache {
     pub fn new(subscription_cache_map: FetchSubscriptionsResponse) -> Self {
         let mut subscription_cache_hash_map = HashMap::new();
         for subscription in subscription_cache_map.subscriptions {
-            let uri = if let Some(uri) = subscription.topic.into_option(){
-                uri
+            let topic = if let Some(topic) = subscription.topic.into_option() {
+                topic
             } else {
                 println!("Unable to parse URI from subscription, skipping...");
                 continue;
             };
-            let subscriber = if let Some(subscriber) = subscription.subscriber.into_option(){
+            let subscriber = if let Some(subscriber) = subscription.subscriber.into_option() {
                 subscriber
             } else {
                 println!("Unable to parse subscriber from subscription, skipping...");
                 continue;
             };
-            let status = if let Some(status) = subscription.status.into_option(){
+            let status = if let Some(status) = subscription.status.into_option() {
                 status
             } else {
                 println!("Unable to parse status from subscription, setting as default");
                 SubscriptionStatus::default()
             };
-            let attributes = if let Some(attributes) = subscription.attributes.into_option(){
+            let attributes = if let Some(attributes) = subscription.attributes.into_option() {
                 attributes
             } else {
                 println!("Unable to parse attributes from subscription, setting as default");
                 SubscribeAttributes::default()
             };
-            let config = if let Some(config) = subscription.config.into_option(){
+            let config = if let Some(config) = subscription.config.into_option() {
                 config
             } else {
                 println!("Unable to parse config from subscription, setting as default");
@@ -98,13 +100,21 @@ impl SubscriptionCache {
             };
             // Create new hashset if the key does not exist and insert the subscription
             let subscription_information = SubscriptionInformation {
+                topic: topic.clone(),
                 subscriber,
                 status,
                 attributes,
-                config
+                config,
             };
+            let subscriber_authority_name = subscription_information
+                .subscriber
+                .uri
+                .as_ref()
+                .unwrap()
+                .authority_name
+                .clone();
             subscription_cache_hash_map
-                .entry(uri)
+                .entry(subscriber_authority_name)
                 .or_insert_with(HashSet::new)
                 .insert(subscription_information);
         }
@@ -113,18 +123,15 @@ impl SubscriptionCache {
         }
     }
 
-    pub async fn fetch_cache(
+    pub async fn fetch_cache_entry(
         &self,
-    ) -> HashMap<UUri, HashSet<SubscriptionInformation>> {
-        let cache_map = self.subscription_cache_map.lock().await;
-        let mut cloned_map = HashMap::new();
+        entry: String,
+    ) -> Option<HashSet<SubscriptionInformation>> {
+        let map = self.subscription_cache_map.lock().await;
+        map.get(&entry).cloned()
+    }
 
-        for (key, value) in cache_map.iter() {
-            let cloned_key = key.clone();
-            let cloned_value = value.iter().cloned().collect::<HashSet<_>>();
-            cloned_map.insert(cloned_key, cloned_value);
-        }
-
-        cloned_map
+    pub async fn fetch_cache(&self) -> HashMap<String, HashSet<SubscriptionInformation>> {
+        self.subscription_cache_map.lock().await.clone()
     }
 }

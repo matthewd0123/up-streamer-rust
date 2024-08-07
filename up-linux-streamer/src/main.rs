@@ -3,22 +3,18 @@ mod config;
 use crate::config::{Config, HostTransport};
 use clap::Parser;
 use log::trace;
-use std::path::PathBuf;
 use std::fs::File;
 use std::io::Read;
-use std::sync::Arc;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{env, thread};
 use up_rust::{UCode, UStatus, UTransport};
-
-use std::str::FromStr;
 use up_streamer::{Endpoint, UStreamer};
 use up_transport_vsomeip::UPTransportVsomeip;
 use up_transport_zenoh::UPClientZenoh;
 use usubscription_static_file::USubscriptionStaticFile;
-use usubscription_static_file::USubscriptionStaticFile;
 use zenoh::config::Config as ZenohConfig;
-use zenoh::config::Endpoint as ZenohEndpoint;
+use zenoh::config::EndPoint as ZenohEndpoint;
 
 #[derive(Parser)]
 #[command()]
@@ -31,28 +27,8 @@ struct StreamerArgs {
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
-    let args = StreamerArgs::parse();
-
-    let mut file = File::open(args.config)
-        .map_err(|e| UStatus::fail_with_code(UCode::NOT_FOUND, format!("File not found: {e:?}")))?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).map_err(|e| {
-        UStatus::fail_with_code(
-            UCode::INTERNAL,
-            format!("Unable to read config file: {e:?}"),
-        )
-    })?;
-
-    let config: Config = json5::from_str(&contents).map_err(|e| {
-        UStatus::fail_with_code(
-            UCode::INTERNAL,
-            format!("Unable to parse config file: {e:?}"),
-        )
-    })?;
-
-    let usubscription = Arc::new(USubscriptionStaticFile::new(Some(PathBuf::from(
-        "example-utils/usubscription-static-file/static-configs/testdata.json",
-    ))));
+    let subscription_path = "static-configs/testdata.json".to_string();
+    let usubscription = Arc::new(USubscriptionStaticFile::new(subscription_path));
 
     let args = StreamerArgs::parse();
 
@@ -82,7 +58,7 @@ async fn main() -> Result<(), UStatus> {
     let mut zenoh_config = ZenohConfig::default();
 
     // Specify the address to listen on using IPv4
-    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7447");
+    let ipv4_endpoint = ZenohEndpoint::from_str("tcp/0.0.0.0:7447");
 
     // Add the IPv4 endpoint to the Zenoh configuration
     zenoh_config

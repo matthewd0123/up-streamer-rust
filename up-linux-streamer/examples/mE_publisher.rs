@@ -50,6 +50,7 @@ async fn main() -> Result<(), UStatus> {
             &REMOTE_AUTHORITY.to_string(),
             PUB_TOPIC_UE_ID,
             &vsomeip_config.unwrap(),
+            None,
         )
         .unwrap(),
     );
