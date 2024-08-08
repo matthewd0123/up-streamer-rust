@@ -44,7 +44,7 @@ async fn main() -> Result<(), UStatus> {
 
     // There will be a single vsomeip_transport, as there is a connection into device and a streamer
     // TODO: Add error handling if we fail to create a UPTransportVsomeip
-    let client: Arc<dyn UTransport> = Arc::new(
+    let publisher: Arc<dyn UTransport> = Arc::new(
         UPTransportVsomeip::new_with_config(
             &PUB_TOPIC_AUTHORITY.to_string(),
             &REMOTE_AUTHORITY.to_string(),
@@ -86,6 +86,6 @@ async fn main() -> Result<(), UStatus> {
             .unwrap();
         println!("Sending Publish message:\n{publish_msg:?}");
 
-        client.send(publish_msg).await?;
+        publisher.send(publish_msg).await?;
     }
 }

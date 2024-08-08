@@ -12,6 +12,7 @@
  ********************************************************************************/
 
 use async_trait::async_trait;
+use clap::Parser;
 use hello_world_protos::hello_world_topics::Timer;
 use log::error;
 use protobuf::Message;
@@ -28,14 +29,21 @@ const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 #[allow(dead_code)]
-struct PublishReceiver {
-    client: Arc<dyn UTransport>,
-}
+struct PublishReceiver {}
 impl PublishReceiver {
-    pub fn new(client: Arc<dyn UTransport>) -> Self {
-        Self { client }
+    pub fn new() -> Self {
+        Self {}
     }
 }
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// The endpoint for Zenoh client to connect to
+    #[arg(short, long, default_value = "tcp/0.0.0.0:7442")]
+    endpoint: String,
+}
+
 #[async_trait]
 impl UListener for PublishReceiver {
     async fn on_receive(&self, msg: UMessage) {
@@ -44,14 +52,12 @@ impl UListener for PublishReceiver {
         let Some(payload_bytes) = msg.payload else {
             panic!("No bytes available");
         };
-        let _ = match Timer::parse_from_bytes(&payload_bytes) {
+        match Timer::parse_from_bytes(&payload_bytes) {
             Ok(timer_message) => {
                 println!("timer: {timer_message:?}");
-                timer_message
             }
             Err(err) => {
                 error!("Unable to parse Timer Message: {err:?}");
-                return;
             }
         };
     }
@@ -65,23 +71,27 @@ impl UListener for PublishReceiver {
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
+    let args = Args::parse();
+
     println!("uE_subscriber");
 
     // TODO: Probably make somewhat configurable?
     // Create a configuration object
     let mut zenoh_config = Config::default();
 
-    // Specify the address to listen on using IPv4
-    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7445");
+    if !args.endpoint.is_empty() {
+        // Specify the address to listen on using IPv4
+        let ipv4_endpoint = EndPoint::from_str(args.endpoint.as_str());
 
-    // Add the IPv4 endpoint to the Zenoh configuration
-    zenoh_config
-        .listen
-        .endpoints
-        .push(ipv4_endpoint.expect("FAIL"));
+        // Add the IPv4 endpoint to the Zenoh configuration
+        zenoh_config
+            .listen
+            .endpoints
+            .push(ipv4_endpoint.expect("FAIL"));
+    }
+
     // TODO: Add error handling if we fail to create a UPClientZenoh
-    // TODO: Add error handling if we fail to create a UPClientZenoh
-    let service: Arc<dyn UTransport> = Arc::new(
+    let subscriber: Arc<dyn UTransport> = Arc::new(
         UPClientZenoh::new(zenoh_config, "linux".to_string())
             .await
             .unwrap(),
@@ -95,9 +105,9 @@ async fn main() -> Result<(), UStatus> {
         ..Default::default()
     };
 
-    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver::new(service.clone()));
+    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver::new());
     // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
-    service
+    subscriber
         .register_listener(&source_filter, None, publish_receiver.clone())
         .await?;
 

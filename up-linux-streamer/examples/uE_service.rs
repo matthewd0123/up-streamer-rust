@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use clap::Parser;
 use hello_world_protos::hello_world_service::{HelloRequest, HelloResponse};
 use log::error;
 use protobuf::Message;
@@ -22,6 +23,15 @@ impl ServiceRequestResponder {
         Self { client }
     }
 }
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// The endpoint for Zenoh client to connect to
+    #[arg(short, long, default_value = "tcp/0.0.0.0:7443")]
+    endpoint: String,
+}
+
 #[async_trait]
 impl UListener for ServiceRequestResponder {
     async fn on_receive(&self, msg: UMessage) {
@@ -61,18 +71,24 @@ impl UListener for ServiceRequestResponder {
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
+    let args = Args::parse();
+
     println!("uE_service");
 
     // TODO: Probably make somewhat configurable?
     let mut zenoh_config = Config::default();
-    // Specify the address to listen on using IPv4
-    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7445");
 
-    // Add the IPv4 endpoint to the Zenoh configuration
-    zenoh_config
-        .listen
-        .endpoints
-        .push(ipv4_endpoint.expect("FAIL"));
+    if !args.endpoint.is_empty() {
+        // Specify the address to listen on using IPv4
+        let ipv4_endpoint = EndPoint::from_str(args.endpoint.as_str());
+
+        // Add the IPv4 endpoint to the Zenoh configuration
+        zenoh_config
+            .listen
+            .endpoints
+            .push(ipv4_endpoint.expect("FAIL"));
+    }
+
     // TODO: Add error handling if we fail to create a UPClientZenoh
     let service: Arc<dyn UTransport> = Arc::new(
         UPClientZenoh::new(zenoh_config, "linux".to_string())

@@ -13,6 +13,7 @@
 
 use chrono::Local;
 use chrono::Timelike;
+use clap::Parser;
 use hello_world_protos::hello_world_topics::Timer;
 use hello_world_protos::timeofday::TimeOfDay;
 use std::str::FromStr;
@@ -27,9 +28,19 @@ const PUB_TOPIC_UE_ID: u16 = 0x3039;
 const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// The endpoint for Zenoh client to connect to
+    #[arg(short, long, default_value = "tcp/0.0.0.0:7444")]
+    endpoint: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
+
+    let args = Args::parse();
 
     println!("uE_publisher");
 
@@ -37,16 +48,19 @@ async fn main() -> Result<(), UStatus> {
     // Create a configuration object
     let mut zenoh_config = Config::default();
 
-    // Specify the address to listen on using IPv4
-    let ipv4_endpoint = EndPoint::from_str("tcp/0.0.0.0:7445");
+    if !args.endpoint.is_empty() {
+        // Specify the address to listen on using IPv4
+        let ipv4_endpoint = EndPoint::from_str(args.endpoint.as_str());
 
-    // Add the IPv4 endpoint to the Zenoh configuration
-    zenoh_config
-        .listen
-        .endpoints
-        .push(ipv4_endpoint.expect("FAIL"));
+        // Add the IPv4 endpoint to the Zenoh configuration
+        zenoh_config
+            .listen
+            .endpoints
+            .push(ipv4_endpoint.expect("FAIL"));
+    }
+
     // TODO: Add error handling if we fail to create a UPClientZenoh
-    let client: Arc<dyn UTransport> = Arc::new(
+    let publisher: Arc<dyn UTransport> = Arc::new(
         UPClientZenoh::new(zenoh_config, "linux".to_string())
             .await
             .unwrap(),
@@ -83,6 +97,6 @@ async fn main() -> Result<(), UStatus> {
             .unwrap();
         println!("Sending Publish message:\n{publish_msg:?}");
 
-        client.send(publish_msg).await?;
+        publisher.send(publish_msg).await?;
     }
 }

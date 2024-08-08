@@ -18,7 +18,7 @@ members = [
     "up-streamer", "subscription-cache", "utils/usubscription-static-file"]
 
 [workspace.package]
-rust-version = "1.72.1"
+rust-version = "1.76.0"
 version = "0.1.5-dev" # uProtocol version
 repository = "https://github.com/eclipse-uprotocol/up-streamer-rust"
 homepage = "https://github.com/eclipse-uprotocol"
@@ -34,7 +34,6 @@ env_logger = { version = "0.10.1" }
 futures = { version = "0.3.30" }
 log = { version = "0.4.20" }
 json5 = { version =  "0.4.1" }
-prost = { version = "0.12" }
 serde = { version = "1.0.154", features = ["derive"] }
 serde_json = { version = "1.0.94" }
 uuid = { version = "1.7.0" }

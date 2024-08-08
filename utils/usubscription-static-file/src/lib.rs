@@ -64,7 +64,7 @@ impl USubscription for USubscriptionStaticFile {
         println!("subscription_json_file: {:?}", subscription_json_file);
         println!(
             "canonicalize: {:?}",
-            canonicalize("../utils/usubscription-static-file/static-configs/testdata.json")
+            canonicalize("./utils/usubscription-static-file/static-configs/testdata.json")
         );
 
         let subscription_json_file = match canonicalize(subscription_json_file) {

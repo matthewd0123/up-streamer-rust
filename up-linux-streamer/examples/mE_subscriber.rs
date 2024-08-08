@@ -33,12 +33,10 @@ const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 #[allow(dead_code)]
-struct PublishReceiver {
-    client: Arc<dyn UTransport>,
-}
+struct PublishReceiver {}
 impl PublishReceiver {
-    pub fn new(client: Arc<dyn UTransport>) -> Self {
-        Self { client }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 #[async_trait]
@@ -80,7 +78,7 @@ async fn main() -> Result<(), UStatus> {
 
     // There will be a single vsomeip_transport, as there is a connection into device and a streamer
     // TODO: Add error handling if we fail to create a UPTransportVsomeip
-    let service: Arc<dyn UTransport> = Arc::new(
+    let subscriber: Arc<dyn UTransport> = Arc::new(
         UPTransportVsomeip::new_with_config(
             &SERVICE_AUTHORITY.to_string(),
             &REMOTE_AUTHORITY.to_string(),
@@ -99,9 +97,9 @@ async fn main() -> Result<(), UStatus> {
         ..Default::default()
     };
 
-    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver::new(service.clone()));
+    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver::new());
     // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
-    service
+    subscriber
         .register_listener(&source_filter, None, publish_receiver.clone())
         .await?;
 

@@ -27,9 +27,6 @@ struct StreamerArgs {
 async fn main() -> Result<(), UStatus> {
     env_logger::init();
 
-    let subscription_path = "static-configs/testdata.json".to_string();
-    let usubscription = Arc::new(USubscriptionStaticFile::new(subscription_path));
-
     let args = StreamerArgs::parse();
 
     let mut file = File::open(args.config)
@@ -49,6 +46,9 @@ async fn main() -> Result<(), UStatus> {
         )
     })?;
 
+    let subscription_path = config.usubscription_config.file_path;
+    let usubscription = Arc::new(USubscriptionStaticFile::new(subscription_path));
+
     let mut streamer = UStreamer::new(
         "up-linux-streamer",
         config.up_streamer_config.message_queue_size,
@@ -58,7 +58,7 @@ async fn main() -> Result<(), UStatus> {
     let mut zenoh_config = ZenohConfig::default();
 
     // Specify the address to listen on using IPv4
-    let ipv4_endpoint = ZenohEndpoint::from_str("tcp/0.0.0.0:7447");
+    let ipv4_endpoint = ZenohEndpoint::from_str(config.zenoh_transport_config.endpoint.as_str());
 
     // Add the IPv4 endpoint to the Zenoh configuration
     zenoh_config

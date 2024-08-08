@@ -11,14 +11,15 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-use async_std::sync::Mutex;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::sync::Mutex;
 use up_rust::core::usubscription::{
     EventDeliveryConfig, FetchSubscriptionsResponse, SubscribeAttributes, SubscriberInfo,
     SubscriptionStatus,
 };
 use up_rust::UUri;
+use up_rust::{UCode, UStatus};
 
 pub type SubscribersMap = Mutex<HashMap<String, HashSet<SubscriptionInformation>>>;
 
@@ -61,25 +62,33 @@ pub struct SubscriptionCache {
     subscription_cache_map: SubscribersMap,
 }
 
+impl Default for SubscriptionCache {
+    fn default() -> Self {
+        Self {
+            subscription_cache_map: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
 /// A [`SubscriptionCache`] is used to store and manage subscriptions to
 /// topics. It is kept local to the streamer. The streamer will receive updates
 /// from the subscription service, and update the SubscriptionCache accordingly.
 impl SubscriptionCache {
-    pub fn new(subscription_cache_map: FetchSubscriptionsResponse) -> Self {
+    pub fn new(subscription_cache_map: FetchSubscriptionsResponse) -> Result<Self, UStatus> {
         let mut subscription_cache_hash_map = HashMap::new();
         for subscription in subscription_cache_map.subscriptions {
-            let topic = if let Some(topic) = subscription.topic.into_option() {
-                topic
-            } else {
-                println!("Unable to parse URI from subscription, skipping...");
-                continue;
-            };
-            let subscriber = if let Some(subscriber) = subscription.subscriber.into_option() {
-                subscriber
-            } else {
-                println!("Unable to parse subscriber from subscription, skipping...");
-                continue;
-            };
+            let topic = subscription.topic.into_option().ok_or_else(|| {
+                UStatus::fail_with_code(
+                    UCode::INVALID_ARGUMENT,
+                    "Unable to retrieve topic".to_string(),
+                )
+            });
+            let subscriber = subscription.subscriber.into_option().ok_or_else(|| {
+                UStatus::fail_with_code(
+                    UCode::INVALID_ARGUMENT,
+                    "Unable to retrieve topic".to_string(),
+                )
+            });
             let status = if let Some(status) = subscription.status.into_option() {
                 status
             } else {
@@ -100,38 +109,36 @@ impl SubscriptionCache {
             };
             // Create new hashset if the key does not exist and insert the subscription
             let subscription_information = SubscriptionInformation {
-                topic: topic.clone(),
-                subscriber,
+                topic: topic.clone()?,
+                subscriber: subscriber.clone()?,
                 status,
                 attributes,
                 config,
             };
-            let subscriber_authority_name = subscription_information
-                .subscriber
-                .uri
-                .as_ref()
-                .unwrap()
-                .authority_name
-                .clone();
+            let subscriber_authority_name = match subscription_information.subscriber.uri.as_ref() {
+                Some(uri) => uri.authority_name.clone(),
+                None => {
+                    return Err(UStatus::fail_with_code(
+                        UCode::INVALID_ARGUMENT,
+                        "Unable to retrieve authority name",
+                    ))
+                }
+            };
             subscription_cache_hash_map
                 .entry(subscriber_authority_name)
                 .or_insert_with(HashSet::new)
                 .insert(subscription_information);
         }
-        Self {
+        Ok(Self {
             subscription_cache_map: Mutex::new(subscription_cache_hash_map),
-        }
+        })
     }
 
-    pub async fn fetch_cache_entry(
-        &self,
-        entry: String,
-    ) -> Option<HashSet<SubscriptionInformation>> {
-        let map = self.subscription_cache_map.lock().await;
+    pub fn fetch_cache_entry(&self, entry: String) -> Option<HashSet<SubscriptionInformation>> {
+        let map = match self.subscription_cache_map.lock() {
+            Ok(map) => map,
+            Err(_) => return None,
+        };
         map.get(&entry).cloned()
-    }
-
-    pub async fn fetch_cache(&self) -> HashMap<String, HashSet<SubscriptionInformation>> {
-        self.subscription_cache_map.lock().await.clone()
     }
 }

@@ -20,14 +20,15 @@ use async_std::{channel, task};
 use async_trait::async_trait;
 use log::*;
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
+use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str;
 use std::thread;
 use subscription_cache::SubscriptionCache;
-use up_rust::core::usubscription::{
-    FetchSubscriptionsRequest, NotificationsRequest, SubscriberInfo, USubscription,
-};
+use up_rust::core::usubscription::{FetchSubscriptionsRequest, SubscriberInfo, USubscription};
 use up_rust::{UCode, UListener, UMessage, UStatus, UTransport, UUIDBuilder, UUri};
 
 const USTREAMER_TAG: &str = "UStreamer:";
@@ -54,6 +55,43 @@ fn any_uuri() -> UUri {
         ..Default::default()
     }
 }
+
+// Used to track any errors in creating forwarding listeners
+pub enum ForwardingListenerError {
+    FailToRegisterNotificationRequestResponseListener,
+    FailToRegisterPublishListener(UUri), // we can embed the subscriber.topic here which failed
+}
+
+impl Debug for ForwardingListenerError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ForwardingListenerError::FailToRegisterNotificationRequestResponseListener => {
+                write!(f, "FailToRegisterNotificationRequestResponseListener")
+            }
+            ForwardingListenerError::FailToRegisterPublishListener(uri) => {
+                write!(f, "FailToRegisterPublishListener({:?})", uri)
+            }
+        }
+    }
+}
+
+impl Display for ForwardingListenerError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ForwardingListenerError::FailToRegisterNotificationRequestResponseListener => {
+                write!(
+                    f,
+                    "Failed to register notification request/response listener"
+                )
+            }
+            ForwardingListenerError::FailToRegisterPublishListener(uri) => {
+                write!(f, "Failed to register publish listener for URI: {}", uri)
+            }
+        }
+    }
+}
+
+impl Error for ForwardingListenerError {}
 
 // the 'gatekeeper' which will prevent us from erroneously being able to add duplicate
 // forwarding rules or delete those rules which don't exist
@@ -153,7 +191,7 @@ impl ForwardingListeners {
         forwarding_id: &str,
         out_sender: Sender<Arc<UMessage>>,
         subscription_cache: Arc<Mutex<SubscriptionCache>>,
-    ) -> Option<Arc<ForwardingListener>> {
+    ) -> Result<Option<Arc<ForwardingListener>>, ForwardingListenerError> {
         let in_comparable_transport = ComparableTransport::new(in_transport.clone());
         let mut forwarding_listeners = self.listeners.lock().await;
 
@@ -162,16 +200,21 @@ impl ForwardingListeners {
         {
             *active += 1;
             if *active > 1 {
-                return None;
+                return Ok(None);
             } else {
-                return Some(forwarding_listener.clone());
+                return Ok(Some(forwarding_listener.clone()));
             }
         }
 
         let forwarding_listener =
             Arc::new(ForwardingListener::new(forwarding_id, out_sender.clone()));
 
+        type UUriPair = Vec<(UUri, Option<UUri>)>;
+        let mut uuri_to_backpedal: HashSet<UUriPair> = HashSet::new();
+
         // Perform async registration and fetching
+
+        uuri_to_backpedal.insert(vec![(any_uuri(), Some(uauthority_to_uuri(out_authority)))]);
         if let Err(err) = in_transport
             .register_listener(
                 &any_uuri(),
@@ -181,30 +224,52 @@ impl ForwardingListeners {
             .await
         {
             warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register request listener, error: {err}");
+            for uuri_pair in &uuri_to_backpedal {
+                for (uuri1, uuri2) in uuri_pair {
+                    // Do something with uuri1 and uuri2
+                    let _ = in_transport
+                        .unregister_listener(uuri1, uuri2.as_ref(), forwarding_listener.clone())
+                        .await;
+                }
+            }
+            return Err(ForwardingListenerError::FailToRegisterNotificationRequestResponseListener);
         } else {
             debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register request listener");
         }
 
-        match subscription_cache
+        let subscribers = match subscription_cache
             .lock()
             .await
             .fetch_cache_entry(out_authority.into())
-            .await
         {
-            Some(subscribers) => {
-                for subscriber in subscribers {
-                    if let Err(err) = in_transport
-                        .register_listener(&subscriber.topic, None, forwarding_listener.clone())
-                        .await
-                    {
-                        warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
-                    } else {
-                        debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
-                    }
-                }
-            }
+            Some(subscribers) => subscribers,
             None => {
                 warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} no subscribers found for out_authority: {out_authority:?}");
+                HashSet::new()
+            }
+        };
+
+        for subscriber in subscribers {
+            uuri_to_backpedal.insert(vec![(subscriber.topic.clone(), None)]);
+            if let Err(err) = in_transport
+                .register_listener(&subscriber.topic, None, forwarding_listener.clone())
+                .await
+            {
+                warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
+                // Perform async unregister_listener
+                for uuri_pair in &uuri_to_backpedal {
+                    for (uuri1, uuri2) in uuri_pair {
+                        // Do something with uuri1 and uuri2
+                        let _ = in_transport
+                            .unregister_listener(uuri1, uuri2.as_ref(), forwarding_listener.clone())
+                            .await;
+                    }
+                }
+                return Err(ForwardingListenerError::FailToRegisterPublishListener(
+                    subscriber.topic,
+                ));
+            } else {
+                debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register listener");
             }
         }
 
@@ -213,7 +278,7 @@ impl ForwardingListeners {
             (in_comparable_transport, out_authority.to_string()),
             (1, forwarding_listener.clone()),
         );
-        Some(forwarding_listener)
+        Ok(Some(forwarding_listener))
     }
 
     pub async fn remove(&self, in_transport: Arc<dyn UTransport>, out_authority: &str) {
@@ -453,9 +518,6 @@ pub struct UStreamer {
     transport_forwarders: TransportForwarders,
     forwarding_listeners: ForwardingListeners,
     subscription_cache: Arc<Mutex<SubscriptionCache>>,
-    // TODO: Use this when USubsription is implemented
-    #[allow(dead_code)]
-    usubscription: Arc<dyn USubscription>,
 }
 
 impl UStreamer {
@@ -494,20 +556,9 @@ impl UStreamer {
             ..Default::default()
         };
 
-        let notifications_register_request = NotificationsRequest {
-            topic: Some(uuri).into(),
-            ..Default::default()
-        };
-        let _ = task::block_on(
-            usubscription.register_for_notifications(notifications_register_request),
-        )
-        .map_err(|e| {
-            UStatus::fail_with_code(
-                UCode::INVALID_ARGUMENT,
-                format!("Failed to register for notifications: {e:?}"),
-            )
-        });
+        // TODO: Create a NotificationsRequest and send over host transport
 
+        // TODO: We need to form a FetchSubscriptionsRequest and send over host transport
         let mut fetch_request = FetchSubscriptionsRequest {
             request: None,
             offset: None,
@@ -517,14 +568,31 @@ impl UStreamer {
         let subscriptions = task::block_on(usubscription.fetch_subscriptions(fetch_request))
             .expect("Failed to fetch subscriptions");
 
-        let subscription_cache_foo = Arc::new(Mutex::new(SubscriptionCache::new(subscriptions)));
+        let subscription_cache_result = SubscriptionCache::new(subscriptions);
+
+        let subscription_cache_foo = match subscription_cache_result {
+            Ok(cache) => {
+                debug!(
+                    "{}:{}:{} SubscriptionCache created",
+                    name, USTREAMER_TAG, USTREAMER_FN_NEW_TAG
+                );
+                Arc::new(Mutex::new(cache))
+            }
+            Err(e) => {
+                error!(
+                    "{}:{}:{} Unable to create SubscriptionCache: {:?}",
+                    name, USTREAMER_TAG, USTREAMER_FN_NEW_TAG, e
+                );
+                Arc::new(Mutex::new(SubscriptionCache::default()))
+            }
+        };
+
         Self {
             name: name.to_string(),
             registered_forwarding_rules: Mutex::new(HashSet::new()),
             transport_forwarders: TransportForwarders::new(message_queue_size as usize),
             forwarding_listeners: ForwardingListeners::new(),
             subscription_cache: subscription_cache_foo.clone(),
-            usubscription,
         }
     }
 
@@ -608,7 +676,8 @@ impl UStreamer {
                         .transport_forwarders
                         .insert(out.transport.clone())
                         .await;
-                    self.forwarding_listeners
+                    let _ = self
+                        .forwarding_listeners
                         .insert(
                             r#in.transport.clone(),
                             &out.authority,

@@ -3493,7 +3493,6 @@ dependencies = [
  "env_logger 0.10.2",
  "futures",
  "log",
- "prost",
  "protobuf",
  "serde",
  "serde_json",
