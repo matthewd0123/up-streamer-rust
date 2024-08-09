@@ -29,12 +29,7 @@ const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 #[allow(dead_code)]
-struct PublishReceiver {}
-impl PublishReceiver {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+struct PublishReceiver;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -105,7 +100,7 @@ async fn main() -> Result<(), UStatus> {
         ..Default::default()
     };
 
-    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver::new());
+    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver);
     // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
     subscriber
         .register_listener(&source_filter, None, publish_receiver.clone())

@@ -33,12 +33,8 @@ const PUB_TOPIC_UE_VERSION_MAJOR: u8 = 1;
 const PUB_TOPIC_RESOURCE_ID: u16 = 0x8001;
 
 #[allow(dead_code)]
-struct PublishReceiver {}
-impl PublishReceiver {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+struct PublishReceiver;
+
 #[async_trait]
 impl UListener for PublishReceiver {
     async fn on_receive(&self, msg: UMessage) {
@@ -47,7 +43,7 @@ impl UListener for PublishReceiver {
         let Some(payload_bytes) = msg.payload else {
             panic!("No bytes available");
         };
-        let _ = match Timer::parse_from_bytes(&payload_bytes) {
+        match Timer::parse_from_bytes(&payload_bytes) {
             Ok(timer_message) => {
                 println!("timer: {timer_message:?}");
                 timer_message
@@ -97,7 +93,7 @@ async fn main() -> Result<(), UStatus> {
         ..Default::default()
     };
 
-    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver::new());
+    let publish_receiver: Arc<dyn UListener> = Arc::new(PublishReceiver);
     // TODO: Need to revisit how the vsomeip config file is used in non point-to-point cases
     subscriber
         .register_listener(&source_filter, None, publish_receiver.clone())

@@ -22,7 +22,7 @@
     },
     zenoh_transport_config: {
       // Endpoint to be used when starting Zenoh session
-      endpoint: "tcp/0.0.0.0:7447"
+      config_file: "./up-linux-streamer/ZENOH_CONFIG.json5"
     },
     someip_config: {
       // Determines the authority_name of the mechatronics network

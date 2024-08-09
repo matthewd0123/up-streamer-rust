@@ -33,7 +33,7 @@ pub struct USubscriptionConfig {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct ZenohTransportConfig {
-    pub(crate) endpoint: String,
+    pub(crate) config_file: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

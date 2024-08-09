@@ -32,6 +32,8 @@ pub struct SubscriptionInformation {
     pub config: EventDeliveryConfig,
 }
 
+// Will be moving this to up-rust
+// Issue: https://github.com/eclipse-uprotocol/up-rust/issues/178
 impl Eq for SubscriptionInformation {}
 
 impl PartialEq for SubscriptionInformation {
@@ -82,13 +84,13 @@ impl SubscriptionCache {
                     UCode::INVALID_ARGUMENT,
                     "Unable to retrieve topic".to_string(),
                 )
-            });
+            })?;
             let subscriber = subscription.subscriber.into_option().ok_or_else(|| {
                 UStatus::fail_with_code(
                     UCode::INVALID_ARGUMENT,
                     "Unable to retrieve topic".to_string(),
                 )
-            });
+            })?;
             let status = if let Some(status) = subscription.status.into_option() {
                 status
             } else {
@@ -109,8 +111,8 @@ impl SubscriptionCache {
             };
             // Create new hashset if the key does not exist and insert the subscription
             let subscription_information = SubscriptionInformation {
-                topic: topic.clone()?,
-                subscriber: subscriber.clone()?,
+                topic: topic.clone(),
+                subscriber: subscriber.clone(),
                 status,
                 attributes,
                 config,

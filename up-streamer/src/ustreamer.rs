@@ -11,8 +11,6 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-#![allow(clippy::mutable_key_type)]
-
 use crate::endpoint::Endpoint;
 use async_std::channel::{Receiver, Sender};
 use async_std::sync::{Arc, Mutex};
@@ -209,12 +207,13 @@ impl ForwardingListeners {
         let forwarding_listener =
             Arc::new(ForwardingListener::new(forwarding_id, out_sender.clone()));
 
-        type UUriPair = Vec<(UUri, Option<UUri>)>;
-        let mut uuri_to_backpedal: HashSet<UUriPair> = HashSet::new();
+        type SourceSinkFilterPair = (UUri, Option<UUri>);
+        #[allow(clippy::mutable_key_type)]
+        let mut uuris_to_backpedal: HashSet<SourceSinkFilterPair> = HashSet::new();
 
         // Perform async registration and fetching
 
-        uuri_to_backpedal.insert(vec![(any_uuri(), Some(uauthority_to_uuri(out_authority)))]);
+        uuris_to_backpedal.insert((any_uuri(), Some(uauthority_to_uuri(out_authority))));
         if let Err(err) = in_transport
             .register_listener(
                 &any_uuri(),
@@ -223,20 +222,34 @@ impl ForwardingListeners {
             )
             .await
         {
-            warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register request listener, error: {err}");
-            for uuri_pair in &uuri_to_backpedal {
-                for (uuri1, uuri2) in uuri_pair {
-                    // Do something with uuri1 and uuri2
-                    let _ = in_transport
-                        .unregister_listener(uuri1, uuri2.as_ref(), forwarding_listener.clone())
-                        .await;
-                }
+            warn!(
+                "{}:{} unable to register request listener, error: {}",
+                FORWARDING_LISTENERS_TAG, FORWARDING_LISTENERS_FN_INSERT_TAG, err
+            );
+            for uuri_pair in &uuris_to_backpedal {
+                if let Err(err) = in_transport
+                    .unregister_listener(
+                        &uuri_pair.0,
+                        uuri_pair.1.as_ref(),
+                        forwarding_listener.clone(),
+                    )
+                    .await
+                {
+                    warn!(
+                        "{}:{} unable to unregister listener, error: {}",
+                        FORWARDING_LISTENERS_TAG, FORWARDING_LISTENERS_FN_INSERT_TAG, err
+                    );
+                };
             }
             return Err(ForwardingListenerError::FailToRegisterNotificationRequestResponseListener);
         } else {
-            debug!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} able to register request listener");
+            debug!(
+                "{}:{} able to register request listener",
+                FORWARDING_LISTENERS_TAG, FORWARDING_LISTENERS_FN_INSERT_TAG
+            );
         }
 
+        #[allow(clippy::mutable_key_type)]
         let subscribers = match subscription_cache
             .lock()
             .await
@@ -244,26 +257,39 @@ impl ForwardingListeners {
         {
             Some(subscribers) => subscribers,
             None => {
-                warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} no subscribers found for out_authority: {out_authority:?}");
+                warn!(
+                    "{}:{} no subscribers found for out_authority: {:?}",
+                    FORWARDING_LISTENERS_TAG, FORWARDING_LISTENERS_FN_INSERT_TAG, out_authority
+                );
                 HashSet::new()
             }
         };
 
         for subscriber in subscribers {
-            uuri_to_backpedal.insert(vec![(subscriber.topic.clone(), None)]);
+            uuris_to_backpedal.insert((subscriber.topic.clone(), None));
             if let Err(err) = in_transport
                 .register_listener(&subscriber.topic, None, forwarding_listener.clone())
                 .await
             {
-                warn!("{FORWARDING_LISTENERS_TAG}:{FORWARDING_LISTENERS_FN_INSERT_TAG} unable to register listener, error: {err}");
+                warn!(
+                    "{}:{} unable to register listener, error: {}",
+                    FORWARDING_LISTENERS_TAG, FORWARDING_LISTENERS_FN_INSERT_TAG, err
+                );
                 // Perform async unregister_listener
-                for uuri_pair in &uuri_to_backpedal {
-                    for (uuri1, uuri2) in uuri_pair {
-                        // Do something with uuri1 and uuri2
-                        let _ = in_transport
-                            .unregister_listener(uuri1, uuri2.as_ref(), forwarding_listener.clone())
-                            .await;
-                    }
+                for uuri_pair in &uuris_to_backpedal {
+                    if let Err(err) = in_transport
+                        .unregister_listener(
+                            &uuri_pair.0,
+                            uuri_pair.1.as_ref(),
+                            forwarding_listener.clone(),
+                        )
+                        .await
+                    {
+                        warn!(
+                            "{}:{} unable to unregister listener, error: {}",
+                            FORWARDING_LISTENERS_TAG, FORWARDING_LISTENERS_FN_INSERT_TAG, err
+                        );
+                    };
                 }
                 return Err(ForwardingListenerError::FailToRegisterPublishListener(
                     subscriber.topic,

@@ -2,10 +2,9 @@ mod config;
 
 use crate::config::{Config, HostTransport};
 use clap::Parser;
-use log::trace;
+use log::{trace, warn};
 use std::fs::File;
 use std::io::Read;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::{env, thread};
 use up_rust::{UCode, UStatus, UTransport};
@@ -14,7 +13,6 @@ use up_transport_vsomeip::UPTransportVsomeip;
 use up_transport_zenoh::UPClientZenoh;
 use usubscription_static_file::USubscriptionStaticFile;
 use zenoh::config::Config as ZenohConfig;
-use zenoh::config::EndPoint as ZenohEndpoint;
 
 #[derive(Parser)]
 #[command()]
@@ -55,16 +53,19 @@ async fn main() -> Result<(), UStatus> {
         usubscription,
     );
 
-    let mut zenoh_config = ZenohConfig::default();
-
-    // Specify the address to listen on using IPv4
-    let ipv4_endpoint = ZenohEndpoint::from_str(config.zenoh_transport_config.endpoint.as_str());
-
-    // Add the IPv4 endpoint to the Zenoh configuration
-    zenoh_config
-        .listen
-        .endpoints
-        .push(ipv4_endpoint.expect("FAIL"));
+    let zenoh_config = match ZenohConfig::from_file(config.zenoh_transport_config.config_file) {
+        Ok(config) => {
+            trace!("Able to read zenoh config from file");
+            config
+        }
+        Err(error) => {
+            warn!(
+                "Unable to read zenoh config from file, using default: {}",
+                error
+            );
+            ZenohConfig::default()
+        }
+    };
 
     let host_transport: Arc<dyn UTransport> = Arc::new(match config.host_config.transport {
         HostTransport::Zenoh => {
